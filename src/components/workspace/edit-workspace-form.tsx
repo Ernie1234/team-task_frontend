@@ -142,7 +142,7 @@ export default function EditWorkspaceForm() {
             </div>
             {canEditWorkspace && (
               <Button
-                className="flex place-self-end  h-[40px] text-white font-semibold"
+                className="flex place-self-end  h-[40px] orange:bg-red-600 font-semibold"
                 disabled={isPending}
                 type="submit"
               >

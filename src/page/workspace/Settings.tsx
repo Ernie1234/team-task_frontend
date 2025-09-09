@@ -1,3 +1,4 @@
+import ThemeSettingsCard from "@/components/setttings/theme-settings-card";
 import { Separator } from "@/components/ui/separator";
 import WorkspaceHeader from "@/components/workspace/common/workspace-header";
 import EditWorkspaceForm from "@/components/workspace/edit-workspace-form";
@@ -16,13 +17,10 @@ const Settings = () => {
             Workspace settings
           </h2>
 
-          <div className="flex flex-col pt-0.5 px-0 ">
-            <div className="pt-2">
-              <EditWorkspaceForm />
-            </div>
-            <div className="pt-2">
-              <DeleteWorkspaceCard />
-            </div>
+          <div className="flex flex-col pt-0.5 px-0 space-y-8">
+            <EditWorkspaceForm />
+            <ThemeSettingsCard />
+            <DeleteWorkspaceCard />
           </div>
         </div>
       </main>

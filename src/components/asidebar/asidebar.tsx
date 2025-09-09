@@ -31,6 +31,7 @@ import { NavProjects } from "./nav-projects";
 import { Separator } from "../ui/separator";
 import useWorkspaceId from "@/hooks/use-workspace-id";
 import { useAuthContext } from "@/context/auth-provider";
+import { ThemeSwitcher } from "../shared/theme-switcher";
 
 const Asidebar = () => {
   const { isLoading, user } = useAuthContext();
@@ -53,7 +54,7 @@ const Asidebar = () => {
                 to={`/workspace/${workspaceId}`}
                 className="hidden md:flex ml-2 items-center gap-2 self-center font-medium"
               >
-                Team Sync.
+                Team Task
               </Link>
             )}
           </div>
@@ -106,10 +107,13 @@ const Asidebar = () => {
                     align="start"
                     sideOffset={4}
                   >
-                    <DropdownMenuGroup></DropdownMenuGroup>
+                    <DropdownMenuGroup>
+                      {/* 👇 Add the ThemeSwitcher here */}
+                      <ThemeSwitcher />
+                    </DropdownMenuGroup>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => setIsOpen(true)}>
-                      <LogOut />
+                      <LogOut className="mr-2 h-4 w-4" />
                       Log out
                     </DropdownMenuItem>
                   </DropdownMenuContent>
