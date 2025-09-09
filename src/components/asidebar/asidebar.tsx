@@ -36,8 +36,6 @@ import { ThemeSwitcher } from "../shared/theme-switcher";
 const Asidebar = () => {
   const { isLoading, user } = useAuthContext();
 
-  console.log("User in aside bar: ", user);
-
   const { open } = useSidebar();
   const workspaceId = useWorkspaceId();
 
