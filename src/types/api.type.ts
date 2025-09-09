@@ -6,9 +6,18 @@ import {
 
 export type loginType = { email: string; password: string };
 export type LoginResponseType = {
+  status: boolean;
   message: string;
-  user: {
+  data: {
     _id: string;
+    name: string;
+    email: string;
+    profilePicture: string | null;
+    isActive: boolean;
+    lastLogin: string | null;
+    createdAt: string;
+    updatedAt: string;
+    __v: number;
     currentWorkspace: string;
   };
 };
@@ -226,7 +235,6 @@ export type CreateTaskPayloadType = {
   };
 };
 
-
 //added new for edtiting of task
 export type EditTaskPayloadType = {
   taskId: string;
@@ -241,7 +249,6 @@ export type EditTaskPayloadType = {
     dueDate: string;
   }>;
 };
-
 
 export type TaskType = {
   _id: string;
@@ -282,4 +289,5 @@ export type AllTaskResponseType = {
   message: string;
   tasks: TaskType[];
   pagination: PaginationType;
+  totalCount: number;
 };

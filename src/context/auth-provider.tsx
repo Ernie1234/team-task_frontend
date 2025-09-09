@@ -45,15 +45,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     refetch: refetchWorkspace,
   } = useGetWorkspaceQuery(workspaceId);
 
-  const workspace = workspaceData?.workspace;
+  const workspace = workspaceData?.workspaceWithMembers;
 
   useEffect(() => {
     if (workspaceError) {
       if (workspaceError?.errorCode === "ACCESS_UNAUTHORIZED") {
-        navigate("/"); // Redirect if the user is not a member of the workspace
+        navigate("/");
       }
     }
   }, [navigate, workspaceError]);
+
+  console.log("workspace Data here: ", workspaceData);
 
   const permissions = usePermissions(user, workspace);
 

@@ -62,7 +62,7 @@ const TaskTable = () => {
   });
 
   const tasks: TaskType[] = data?.tasks || [];
-  const totalCount = data?.pagination.totalCount || 0;
+  const totalCount = data?.totalCount || 0;
 
   const handlePageChange = (page: number) => {
     setPageNumber(page);
@@ -72,6 +72,8 @@ const TaskTable = () => {
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
   };
+
+  console.log("task table: ", data);
 
   return (
     <div className="w-full relative">

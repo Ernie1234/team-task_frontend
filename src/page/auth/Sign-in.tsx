@@ -54,7 +54,7 @@ const SignIn = () => {
 
     mutate(values, {
       onSuccess: (data) => {
-        const user = data.user;
+        const user = data.data;
         const decodedUrl = returnUrl ? decodeURIComponent(returnUrl) : null;
         navigate(decodedUrl || `/workspace/${user.currentWorkspace}`);
       },
@@ -143,7 +143,7 @@ const SignIn = () => {
                   </div>
                   <Button disabled={isPending} type="submit" className="w-full">
                     {isPending && <Loader className="mr-2 animate-spin" />}
-                    Login
+                    {isPending ? "Loading..." : "Login"}
                   </Button>
                 </form>
               </Form>

@@ -118,7 +118,7 @@ export const invitedUserJoinWorkspaceMutationFn = async (
   message: string;
   workspaceId: string;
 }> => {
-  const response = await API.post(`/member/workspace/${iniviteCode}/join`);
+  const response = await API.post(`/members/workspace/${iniviteCode}/join`);
   return response.data;
 };
 
@@ -129,7 +129,7 @@ export const createProjectMutationFn = async ({
   data,
 }: CreateProjectPayloadType): Promise<ProjectResponseType> => {
   const response = await API.post(
-    `/project/workspace/${workspaceId}/create`,
+    `/projects/workspace/${workspaceId}/create-project`,
     data
   );
   return response.data;
@@ -141,7 +141,7 @@ export const editProjectMutationFn = async ({
   data,
 }: EditProjectPayloadType): Promise<ProjectResponseType> => {
   const response = await API.put(
-    `/project/${projectId}/workspace/${workspaceId}/update`,
+    `/projects/workspace/${workspaceId}/all-projects/${projectId}/update`,
     data
   );
   return response.data;
@@ -153,9 +153,9 @@ export const getProjectsInWorkspaceQueryFn = async ({
   pageNumber = 1,
 }: AllProjectPayloadType): Promise<AllProjectResponseType> => {
   const response = await API.get(
-    `/project/workspace/${workspaceId}/all?pageSize=${pageSize}&pageNumber=${pageNumber}`
+    `/projects/workspace/${workspaceId}/all-projects?pageSize=${pageSize}&pageNumber=${pageNumber}`
   );
-  return response.data;
+  return response.data.data;
 };
 
 export const getProjectByIdQueryFn = async ({
@@ -163,7 +163,7 @@ export const getProjectByIdQueryFn = async ({
   projectId,
 }: ProjectByIdPayloadType): Promise<ProjectResponseType> => {
   const response = await API.get(
-    `/project/${projectId}/workspace/${workspaceId}`
+    `/projects/workspace/${workspaceId}/all-projects/${projectId}`
   );
   return response.data;
 };
@@ -173,7 +173,7 @@ export const getProjectAnalyticsQueryFn = async ({
   projectId,
 }: ProjectByIdPayloadType): Promise<AnalyticsResponseType> => {
   const response = await API.get(
-    `/project/${projectId}/workspace/${workspaceId}/analytics`
+    `/projects/workspace/${workspaceId}/all-projects/${projectId}/analytics`
   );
   return response.data;
 };
@@ -185,7 +185,7 @@ export const deleteProjectMutationFn = async ({
   message: string;
 }> => {
   const response = await API.delete(
-    `/project/${projectId}/workspace/${workspaceId}/delete`
+    `/project/workspace/${workspaceId}/all-projects/${projectId}/delete`
   );
   return response.data;
 };
@@ -199,21 +199,21 @@ export const createTaskMutationFn = async ({
   data,
 }: CreateTaskPayloadType) => {
   const response = await API.post(
-    `/task/project/${projectId}/workspace/${workspaceId}/create`,
+    `/tasks/workspace/${workspaceId}/projects/${projectId}/tasks`,
     data
   );
   return response.data;
 };
-
 
 export const editTaskMutationFn = async ({
   taskId,
   projectId,
   workspaceId,
   data,
-}: EditTaskPayloadType): Promise<{message: string;}> => {
+}: EditTaskPayloadType): Promise<{ message: string }> => {
+  console.log("In the API: ", data, workspaceId, projectId, taskId);
   const response = await API.put(
-    `/task/${taskId}/project/${projectId}/workspace/${workspaceId}/update/`,
+    `/tasks/workspace/${workspaceId}/projects/${projectId}/tasks/${taskId}`,
     data
   );
   return response.data;
@@ -230,7 +230,7 @@ export const getAllTasksQueryFn = async ({
   pageNumber,
   pageSize,
 }: AllTaskPayloadType): Promise<AllTaskResponseType> => {
-  const baseUrl = `/task/workspace/${workspaceId}/all`;
+  const baseUrl = `/tasks/workspace/${workspaceId}/projects/${projectId}/tasks`;
 
   const queryParams = new URLSearchParams();
   if (keyword) queryParams.append("keyword", keyword);
@@ -244,6 +244,8 @@ export const getAllTasksQueryFn = async ({
 
   const url = queryParams.toString() ? `${baseUrl}?${queryParams}` : baseUrl;
   const response = await API.get(url);
+
+  console.log("here again: ", response.data);
   return response.data;
 };
 
@@ -257,7 +259,7 @@ export const deleteTaskMutationFn = async ({
   message: string;
 }> => {
   const response = await API.delete(
-    `task/${taskId}/workspace/${workspaceId}/delete`
+    `tasks/workspace/${workspaceId}/tasks/${taskId}/delete`
   );
   return response.data;
 };

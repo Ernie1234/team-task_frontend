@@ -35,6 +35,8 @@ import { useAuthContext } from "@/context/auth-provider";
 const Asidebar = () => {
   const { isLoading, user } = useAuthContext();
 
+  console.log("User in aside bar: ", user);
+
   const { open } = useSidebar();
   const workspaceId = useWorkspaceId();
 

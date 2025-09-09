@@ -1,5 +1,3 @@
-"use client";
-
 import {
   LucideIcon,
   Settings,
@@ -26,6 +24,8 @@ type ItemType = {
 
 export function NavMain() {
   const { hasPermission } = useAuthContext();
+
+  console.log("Has permission in nav main: ", hasPermission);
 
   const canManageSettings = hasPermission(
     Permissions.MANAGE_WORKSPACE_SETTINGS
