@@ -5,6 +5,24 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 const ThemeSettingsCard = () => {
   const { theme, setTheme } = useTheme();
 
+  const themeOptions = [
+    { value: "light", label: "Light", color: "bg-[#f8f9fa] border-gray-300" },
+    { value: "dark", label: "Dark", color: "bg-[#1a1d21] border-gray-700" },
+    {
+      value: "orange",
+      label: "Orange",
+      color: "bg-orange-100 border-orange-300",
+    },
+    { value: "blue", label: "Blue", color: "bg-blue-100 border-blue-300" },
+    { value: "green", label: "Green", color: "bg-green-100 border-green-300" },
+    { value: "red", label: "Red", color: "bg-red-100 border-red-300" },
+    {
+      value: "purple",
+      label: "Purple",
+      color: "bg-purple-100 border-purple-300",
+    },
+  ];
+
   return (
     <div className="w-full">
       {/* Title Section (matches EditWorkspaceForm and DeleteWorkspaceCard) */}
@@ -29,42 +47,23 @@ const ThemeSettingsCard = () => {
         <RadioGroup
           value={theme}
           onValueChange={setTheme}
-          className="w-full grid grid-cols-1 sm:grid-cols-3 gap-4"
+          className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
         >
-          {/* Light Theme Option */}
-          <div>
-            <RadioGroupItem value="light" id="light" className="peer sr-only" />
-            <Label
-              htmlFor="light"
-              className="flex cursor-pointer flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-            >
-              Light
-            </Label>
-          </div>
-          {/* Dark Theme Option */}
-          <div>
-            <RadioGroupItem value="dark" id="dark" className="peer sr-only" />
-            <Label
-              htmlFor="dark"
-              className="flex cursor-pointer flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-            >
-              Dark
-            </Label>
-          </div>
-          {/* Orange Theme Option */}
-          <div>
-            <RadioGroupItem
-              value="orange"
-              id="orange"
-              className="peer sr-only"
-            />
-            <Label
-              htmlFor="orange"
-              className="flex cursor-pointer flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-            >
-              Orange
-            </Label>
-          </div>
+          {themeOptions.map((themeOption) => (
+            <div key={themeOption.value}>
+              <RadioGroupItem
+                value={themeOption.value}
+                id={themeOption.value}
+                className="peer sr-only"
+              />
+              <Label
+                htmlFor={themeOption.value}
+                className={`flex cursor-pointer flex-col items-center justify-between rounded-md border-2 p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary ${themeOption.color}`}
+              >
+                {themeOption.label}
+              </Label>
+            </div>
+          ))}
         </RadioGroup>
       </div>
     </div>

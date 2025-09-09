@@ -68,7 +68,11 @@ export function NavMain() {
       <SidebarMenu>
         {items.map((item) => (
           <SidebarMenuItem key={item.title}>
-            <SidebarMenuButton isActive={item.url === pathname} asChild>
+            <SidebarMenuButton
+              isActive={item.url === pathname}
+              asChild
+              className="hover:bg-muted-foreground/10"
+            >
               <Link to={item.url} className="!text-[15px]">
                 <item.icon />
                 <span>{item.title}</span>

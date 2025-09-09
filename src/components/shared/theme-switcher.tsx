@@ -31,7 +31,6 @@ export function ThemeSwitcher() {
             {theme === "dark" && <Check className="ml-auto h-4 w-4" />}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setTheme("orange")}>
-            {/* Using Paintbrush as a placeholder icon for the orange theme */}
             <Paintbrush className="mr-2 h-4 w-4" />
             <span>Orange</span>
             {theme === "orange" && <Check className="ml-auto h-4 w-4" />}

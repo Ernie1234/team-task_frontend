@@ -46,7 +46,7 @@ const Asidebar = () => {
   return (
     <>
       <Sidebar collapsible="icon">
-        <SidebarHeader className="!py-0 dark:bg-background">
+        <SidebarHeader className="!py-0 bg-background">
           <div className="flex h-[50px] items-center justify-start w-full px-1">
             <Logo url={`/workspace/${workspaceId}`} />
             {open && (
@@ -59,7 +59,7 @@ const Asidebar = () => {
             )}
           </div>
         </SidebarHeader>
-        <SidebarContent className=" !mt-0 dark:bg-background">
+        <SidebarContent className=" !mt-0 bg-background overflow-y-auto hide-scrollbar">
           <SidebarGroup className="!py-0">
             <SidebarGroupContent>
               <WorkspaceSwitcher />
@@ -70,7 +70,7 @@ const Asidebar = () => {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter className="dark:bg-background">
+        <SidebarFooter className="bg-background">
           <SidebarMenu>
             <SidebarMenuItem>
               {isLoading ? (

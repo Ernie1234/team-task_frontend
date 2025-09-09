@@ -14,26 +14,30 @@ interface ThemeContextType {
   setTogglePosition: Dispatch<SetStateAction<string>>;
 }
 
-// Create the context with an initial value of `undefined`
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
+// List of valid themes for validation
+const VALID_THEMES = [
+  "light",
+  "dark",
+  "orange",
+  "blue",
+  "green",
+  "red",
+  "purple",
+];
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const getInitialTheme = () => {
-    // Check for a saved theme in localStorage first
     const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) {
+    if (savedTheme && VALID_THEMES.includes(savedTheme)) {
       return savedTheme;
     }
 
-    // If no theme is saved, check the system preference
-    if (
-      window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches
-    ) {
+    if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
       return "dark";
     }
 
-    // Default to 'light' if no preference is found
     return "light";
   };
 
@@ -43,8 +47,10 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   useEffect(() => {
-    document.body.className = theme;
-    localStorage.setItem("theme", theme);
+    // Validate theme before applying
+    const validTheme = VALID_THEMES.includes(theme) ? theme : "light";
+    document.body.className = validTheme;
+    localStorage.setItem("theme", validTheme);
   }, [theme]);
 
   useEffect(() => {
