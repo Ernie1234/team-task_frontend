@@ -26,7 +26,7 @@ const AnalyticsCard = (props: {
     return null;
   };
   return (
-    <Card className="shadow-none w-full ">
+    <Card className="shadow-none w-full bg-muted">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex items-center gap-1">
           <CardTitle className="text-sm font-medium">{title}</CardTitle>

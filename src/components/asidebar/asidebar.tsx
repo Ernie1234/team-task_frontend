@@ -108,7 +108,6 @@ const Asidebar = () => {
                     sideOffset={4}
                   >
                     <DropdownMenuGroup>
-                      {/* 👇 Add the ThemeSwitcher here */}
                       <ThemeSwitcher />
                     </DropdownMenuGroup>
                     <DropdownMenuSeparator />

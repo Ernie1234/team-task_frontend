@@ -6,20 +6,54 @@ const ThemeSettingsCard = () => {
   const { theme, setTheme } = useTheme();
 
   const themeOptions = [
-    { value: "light", label: "Light", color: "bg-[#f8f9fa] border-gray-300" },
-    { value: "dark", label: "Dark", color: "bg-[#1a1d21] border-gray-700" },
+    {
+      value: "light",
+      label: "Light",
+      bgColor: "bg-[#f8f9fa]",
+      borderColor: "border-gray-300",
+      textColor: "text-gray-800",
+    },
+    {
+      value: "dark",
+      label: "Dark",
+      bgColor: "bg-[#1a1d21]",
+      borderColor: "border-gray-700",
+      textColor: "text-gray-100",
+    },
     {
       value: "orange",
       label: "Orange",
-      color: "bg-orange-100 border-orange-300",
+      bgColor: "bg-orange-100",
+      borderColor: "border-orange-300",
+      textColor: "text-orange-800",
     },
-    { value: "blue", label: "Blue", color: "bg-blue-100 border-blue-300" },
-    { value: "green", label: "Green", color: "bg-green-100 border-green-300" },
-    { value: "red", label: "Red", color: "bg-red-100 border-red-300" },
+    {
+      value: "blue",
+      label: "Blue",
+      bgColor: "bg-blue-100",
+      borderColor: "border-blue-300",
+      textColor: "text-blue-800",
+    },
+    {
+      value: "green",
+      label: "Green",
+      bgColor: "bg-green-100",
+      borderColor: "border-green-300",
+      textColor: "text-green-800",
+    },
+    {
+      value: "red",
+      label: "Red",
+      bgColor: "bg-red-100",
+      borderColor: "border-red-300",
+      textColor: "text-red-800",
+    },
     {
       value: "purple",
       label: "Purple",
-      color: "bg-purple-100 border-purple-300",
+      bgColor: "bg-purple-100",
+      borderColor: "border-purple-300",
+      textColor: "text-purple-800",
     },
   ];
 
@@ -58,7 +92,7 @@ const ThemeSettingsCard = () => {
               />
               <Label
                 htmlFor={themeOption.value}
-                className={`flex cursor-pointer flex-col items-center justify-between rounded-md border-2 p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary ${themeOption.color}`}
+                className={`flex cursor-pointer flex-col items-center justify-between rounded-md border-2 p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary ${themeOption.bgColor} ${themeOption.borderColor} ${themeOption.textColor} font-medium`}
               >
                 {themeOption.label}
               </Label>
