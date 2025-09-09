@@ -211,7 +211,6 @@ export const editTaskMutationFn = async ({
   workspaceId,
   data,
 }: EditTaskPayloadType): Promise<{ message: string }> => {
-  console.log("In the API: ", data, workspaceId, projectId, taskId);
   const response = await API.put(
     `/tasks/workspace/${workspaceId}/projects/${projectId}/tasks/${taskId}`,
     data
@@ -251,15 +250,17 @@ export const getAllTasksQueryFn = async ({
 
 export const deleteTaskMutationFn = async ({
   workspaceId,
+  projectId,
   taskId,
 }: {
   workspaceId: string;
+  projectId: string | undefined;
   taskId: string;
 }): Promise<{
   message: string;
 }> => {
   const response = await API.delete(
-    `tasks/workspace/${workspaceId}/tasks/${taskId}/delete`
+    `/tasks/workspace/${workspaceId}/projects/${projectId}/tasks/${taskId}`
   );
   return response.data;
 };
