@@ -53,6 +53,61 @@ export type CurrentUserResponseType = {
 
 //******** */ WORLSPACE TYPES ****************
 // ******************************************
+
+// types/api.type.ts or wherever you have your types
+export interface INotification {
+  _id: string;
+  recipient: {
+    _id: string;
+    name: string;
+    email: string;
+    profilePicture?: string;
+  };
+  sender: { _id: string; name: string; email: string; profilePicture?: string };
+  message: string;
+  link: string;
+  isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
+  __v?: number;
+}
+
+export interface IActivity {
+  _id: string;
+  user: string | UserType;
+  action: string;
+  targetType: string;
+  targetId: string;
+  workspaceId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IWorkspace {
+  _id: string;
+  name: string;
+  description: string;
+  owner: string;
+  inviteCode: string;
+  members: {
+    _id: string;
+    userId: string;
+    workspaceId: string;
+    role: {
+      _id: string;
+      name: string;
+      permissions: PermissionType[];
+    };
+    joinedAt: string;
+    createdAt: string;
+  }[];
+  notifications: INotification[];
+  activities: IActivity[];
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
 export type WorkspaceType = {
   _id: string;
   name: string;
@@ -100,8 +155,9 @@ export type WorkspaceWithMembersType = WorkspaceType & {
 };
 
 export type WorkspaceByIdResponseType = {
+  status: boolean;
   message: string;
-  workspace: WorkspaceWithMembersType;
+  workspaceWithMembers: IWorkspace;
 };
 
 export type ChangeWorkspaceMemberRoleType = {

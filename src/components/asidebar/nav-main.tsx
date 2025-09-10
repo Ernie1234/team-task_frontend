@@ -4,10 +4,12 @@ import {
   Users,
   CheckCircle,
   LayoutDashboard,
+  Bell,
 } from "lucide-react";
 import {
   SidebarGroup,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
@@ -20,12 +22,16 @@ type ItemType = {
   title: string;
   url: string;
   icon: LucideIcon;
+  showBadge?: boolean; // Add this property
 };
 
 export function NavMain() {
-  const { hasPermission } = useAuthContext();
+  const { hasPermission, workspace } = useAuthContext();
 
-  console.log("Has permission in nav main: ", hasPermission);
+  const unreadNotificationsCount = workspace?.notifications
+    ? workspace.notifications.filter((notification) => !notification.isRead)
+        .length
+    : 0;
 
   const canManageSettings = hasPermission(
     Permissions.MANAGE_WORKSPACE_SETTINGS
@@ -41,16 +47,25 @@ export function NavMain() {
       title: "Dashboard",
       url: `/workspace/${workspaceId}`,
       icon: LayoutDashboard,
+      showBadge: false,
     },
     {
       title: "Tasks",
       url: `/workspace/${workspaceId}/tasks`,
       icon: CheckCircle,
+      showBadge: false,
     },
     {
       title: "Members",
       url: `/workspace/${workspaceId}/members`,
       icon: Users,
+      showBadge: false,
+    },
+    {
+      title: "Notifications",
+      url: `/workspace/${workspaceId}/notifications`,
+      icon: Bell,
+      showBadge: true,
     },
 
     ...(canManageSettings
@@ -59,6 +74,7 @@ export function NavMain() {
             title: "Settings",
             url: `/workspace/${workspaceId}/settings`,
             icon: Settings,
+            showBadge: false,
           },
         ]
       : []),
@@ -78,6 +94,9 @@ export function NavMain() {
                 <span>{item.title}</span>
               </Link>
             </SidebarMenuButton>
+            {item.showBadge && unreadNotificationsCount > 0 && (
+              <SidebarMenuBadge>{unreadNotificationsCount}</SidebarMenuBadge>
+            )}
           </SidebarMenuItem>
         ))}
       </SidebarMenu>

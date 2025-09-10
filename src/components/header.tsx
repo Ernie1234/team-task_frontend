@@ -21,8 +21,9 @@ const Header = () => {
     if (pathname.includes("/project/")) return "Project";
     if (pathname.includes("/settings")) return "Settings";
     if (pathname.includes("/tasks")) return "Tasks";
+    if (pathname.includes("/notifications")) return "Notifications";
     if (pathname.includes("/members")) return "Members";
-    return null; // Default label
+    return null;
   };
 
   const pageHeading = getPageLabel(pathname);

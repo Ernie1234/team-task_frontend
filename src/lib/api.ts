@@ -264,3 +264,25 @@ export const deleteTaskMutationFn = async ({
   );
   return response.data;
 };
+
+//*******NOTIFICATIONS ********************************
+//************************* */
+
+export const markNotificationsAsRead = async (
+  notificationIds: string[]
+): Promise<void> => {
+  const response = await API.patch(`/notifications/mark-as-read`, {
+    notificationIds,
+  });
+  console.log("mark notification as read: ", response.data);
+  return response.data;
+};
+export const markAllNotificationsAsRead = async (
+  workspaceId: string
+): Promise<void> => {
+  const response = await API.patch(
+    `/notifications/workspace/${workspaceId}/mark-all-read`
+  );
+  console.log("mark all notification as read: ", response.data);
+  return response.data;
+};
