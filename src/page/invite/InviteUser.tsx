@@ -30,7 +30,7 @@ const InviteUser = () => {
     mutationFn: invitedUserJoinWorkspaceMutationFn,
     onSuccess: (data) => {
       queryClient.resetQueries({
-        queryKey: ["userWorkspaces"],
+        queryKey: ["userWorkspaces", "workspace-activities"],
       });
       navigate(`/workspace/${data.workspaceId}`);
     },

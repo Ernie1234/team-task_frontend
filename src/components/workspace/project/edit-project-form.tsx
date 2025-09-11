@@ -79,7 +79,7 @@ export default function EditProjectForm(props: {
     mutate(payload, {
       onSuccess: (data) => {
         queryClient.invalidateQueries({
-          queryKey: ["singleProject", projectId],
+          queryKey: ["singleProject", "workspace-activities", projectId],
         });
 
         queryClient.invalidateQueries({

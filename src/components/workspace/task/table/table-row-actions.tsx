@@ -48,7 +48,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
       {
         onSuccess: (data) => {
           queryClient.invalidateQueries({
-            queryKey: ["all-tasks", workspaceId],
+            queryKey: ["all-tasks", "workspace-activities", workspaceId],
           });
           toast({
             title: "Success",

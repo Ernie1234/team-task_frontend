@@ -27,7 +27,7 @@ const DeleteWorkspaceCard = () => {
     mutate(workspaceId, {
       onSuccess: (data) => {
         queryClient.invalidateQueries({
-          queryKey: ["userWorkspaces"],
+          queryKey: ["userWorkspaces", "workspace-activities"],
         });
         navigate(`/workspace/${data.currentWorkspace}`);
         setTimeout(() => onCloseDialog(), 100);

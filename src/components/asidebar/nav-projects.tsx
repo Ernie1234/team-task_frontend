@@ -82,7 +82,7 @@ export function NavProjects() {
       {
         onSuccess: (data) => {
           queryClient.invalidateQueries({
-            queryKey: ["allprojects", workspaceId],
+            queryKey: ["allprojects", "workspace-activities", workspaceId],
           });
           toast({
             title: "Success",

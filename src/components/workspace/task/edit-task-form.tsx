@@ -142,7 +142,9 @@ export default function EditTaskForm({
 
     mutate(payload, {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["all-tasks", workspaceId] });
+        queryClient.invalidateQueries({
+          queryKey: ["all-tasks", "workspace-activities", workspaceId],
+        });
         toast({
           title: "Success",
           description: "Task updated successfully",

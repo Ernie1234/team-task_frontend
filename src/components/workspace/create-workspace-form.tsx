@@ -52,7 +52,7 @@ export default function CreateWorkspaceForm({
     mutate(values, {
       onSuccess: (data) => {
         queryClient.resetQueries({
-          queryKey: ["userWorkspaces"],
+          queryKey: ["userWorkspaces", "workspace-activities"],
         });
 
         const workspace = data.workspace;

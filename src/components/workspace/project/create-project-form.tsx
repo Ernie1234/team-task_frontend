@@ -73,7 +73,7 @@ export default function CreateProjectForm({
       onSuccess: (data) => {
         const project = data.project;
         queryClient.invalidateQueries({
-          queryKey: ["allprojects", workspaceId],
+          queryKey: ["allprojects", "workspace-activities", workspaceId],
         });
 
         toast({

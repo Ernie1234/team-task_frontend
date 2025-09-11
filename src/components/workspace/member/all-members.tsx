@@ -52,7 +52,7 @@ const AllMembers = () => {
     mutate(payload, {
       onSuccess: () => {
         queryClient.invalidateQueries({
-          queryKey: ["members", workspaceId],
+          queryKey: ["members", "workspace-activities", workspaceId],
         });
         toast({
           title: "Success",
