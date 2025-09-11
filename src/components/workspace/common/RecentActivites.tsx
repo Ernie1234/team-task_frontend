@@ -47,7 +47,7 @@ function RecentActivites({ title }: Props) {
               className="flex space-x-1 justify-between items-start w-full"
             >
               <div className="flex gap-2">
-                <Avatar className="h-8 w-8 rounded-full">
+                <Avatar className="h-7 w-7 rounded-full">
                   <AvatarImage src={activity.user?.profilePicture || ""} />
                   <AvatarFallback className="rounded-full border border-gray-500">
                     {activity.user?.name?.split(" ")?.[0]?.charAt(0)}
@@ -58,12 +58,36 @@ function RecentActivites({ title }: Props) {
                   <p className="text-sm font-medium leading-none truncate">
                     {activity.user?.name}
                   </p>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {activity.message}
+                  <p className="text-xs text-muted-foreground max-w-prose">
+                    {(() => {
+                      const message =
+                        activity.message.length > 25
+                          ? `${activity.message.substring(0, 25)}...`
+                          : activity.message;
+
+                      const parts = message.split(/"/);
+
+                      return parts.map((part, partIndex) => {
+                        if (partIndex % 2 === 1) {
+                          // This part was inside quotes
+                          return (
+                            <span
+                              key={partIndex}
+                              className="text-primary font-semibold"
+                            >
+                              {part}
+                            </span>
+                          );
+                        } else {
+                          // This part was outside quotes
+                          return <span key={partIndex}>{part}</span>;
+                        }
+                      });
+                    })()}
                   </p>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground truncate leading-none">
+              <p className="text-xs text-muted-foreground truncate leading-none">
                 {format(new Date(activity.createdAt), "h:mm a")}
               </p>
             </div>
