@@ -8,6 +8,7 @@ import RecentProjects from "@/components/workspace/project/recent-projects";
 import RecentTasks from "@/components/workspace/task/recent-tasks";
 import RecentMembers from "@/components/workspace/member/recent-members";
 import RecentActivites from "@/components/workspace/common/RecentActivites";
+import { TaskChart } from "@/components/workspace/common/TaskChart";
 
 const WorkspaceDashboard = () => {
   const { onOpen } = useCreateProjectDialog();
@@ -58,7 +59,8 @@ const WorkspaceDashboard = () => {
             </Tabs>
           </div>
         </div>
-        <div className="flex w-full lg:w-4/12">
+        <div className="flex flex-col space-y-4 w-full lg:w-4/12">
+          <TaskChart />
           <RecentActivites title="Recent Activities" />
         </div>
       </div>
