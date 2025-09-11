@@ -132,6 +132,19 @@ export const invitedUserJoinWorkspaceMutationFn = async (
   return response.data;
 };
 
+export const inviteMemberByEmailMutationFn = async (
+  { email }: { email: string },
+  workspaceId: string
+): Promise<{
+  message: string;
+  status: boolean;
+}> => {
+  const response = await API.post(`/workspace/invite/member/${workspaceId}`, {
+    email,
+  });
+  return response.data;
+};
+
 //********* */
 //********* PROJECTS
 export const createProjectMutationFn = async ({
