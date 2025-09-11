@@ -1,10 +1,8 @@
-// src/components/auth/sign-up.tsx
-
 import { Link, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
+import { Button } from "../../components/ui/button";
 import {
   Form,
   FormControl,
@@ -12,14 +10,15 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import Logo from "@/components/logo";
-import GoogleOauthButton from "@/components/auth/google-oauth-button";
+} from "../../components/ui/form";
+import { Input } from "../../components/ui/input";
+
 import { useMutation } from "@tanstack/react-query";
-import { registerMutationFn } from "@/lib/api";
-import { toast } from "@/hooks/use-toast";
+import { registerMutationFn } from "../../lib/api";
+import { toast } from "../../hooks/use-toast";
 import { Loader } from "lucide-react";
+import GoogleOauthButton from "@/components/auth/google-oauth-button";
+import Logo from "@/components/logo";
 
 // Form schema and component logic are unchanged
 const formSchema = z.object({
@@ -54,7 +53,12 @@ const SignUp = () => {
     if (isPending) return;
     mutate(values, {
       onSuccess: () => {
-        navigate("/");
+        toast({
+          title: "Registration successful!",
+          description:
+            "A verification email has been sent to your email address. Please check your inbox.",
+        });
+        navigate(`/verify-email?email=${encodeURIComponent(values.email)}`);
       },
       onError: (error) => {
         console.log(error);
