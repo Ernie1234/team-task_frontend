@@ -47,7 +47,7 @@ const RecentProjects = () => {
             <li
               key={project._id}
               role="listitem"
-              className="shadow-none cursor-pointer border-0 py-2 hover:bg-gray-50 transition-colors ease-in-out "
+              className="shadow-none cursor-pointer border-0 py-2 hover:bg-muted transition-colors ease-in-out "
             >
               <Link
                 to={`/workspace/${workspaceId}/project/${project._id}`}

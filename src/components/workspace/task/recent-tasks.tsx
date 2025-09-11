@@ -57,7 +57,7 @@ const RecentTasks = () => {
           return (
             <li
               key={task._id}
-              className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              className="p-4 flex items-center justify-between hover:bg-muted transition-colors"
             >
               {/* Task Info */}
               <div className="flex flex-col space-y-1 flex-grow">
