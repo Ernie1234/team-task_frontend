@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -35,6 +35,8 @@ const formSchema = z.object({
 
 const SignUp = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl");
 
   const { mutate, isPending } = useMutation({
     mutationFn: registerMutationFn,
@@ -58,7 +60,11 @@ const SignUp = () => {
           description:
             "A verification email has been sent to your email address. Please check your inbox.",
         });
-        navigate(`/verify-email?email=${encodeURIComponent(values.email)}`);
+        navigate(
+          `/verify-email?email=${encodeURIComponent(values.email)}${
+            returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ""
+          }`
+        );
       },
       onError: (error) => {
         console.log(error);
@@ -89,7 +95,10 @@ const SignUp = () => {
                   Signup with your Email or Google account
                 </p>
               </div>
-              <GoogleOauthButton label="Signup with Google" />
+              <GoogleOauthButton
+                label="Signup with Google"
+                returnUrl={returnUrl}
+              />
               <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
                 <span className="bg-background text-muted-foreground relative z-10 px-2">
                   Or continue with

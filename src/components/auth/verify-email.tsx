@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -37,9 +37,11 @@ interface VerifyEmailFormProps {
 }
 
 const VerifyEmailForm = ({ email: emailProp }: VerifyEmailFormProps) => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const urlEmail = searchParams.get("email");
   const urlToken = searchParams.get("token");
+  const returnUrl = searchParams.get("returnUrl");
   const [verificationStatus, setVerificationStatus] = useState("pending");
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -58,6 +60,8 @@ const VerifyEmailForm = ({ email: emailProp }: VerifyEmailFormProps) => {
         description: "Your email has been successfully verified.",
         variant: "default",
       });
+      const decodedUrl = returnUrl ? decodeURIComponent(returnUrl) : null;
+      navigate(decodedUrl || `/`);
     },
     onError: (error) => {
       setVerificationStatus("error");
@@ -73,7 +77,6 @@ const VerifyEmailForm = ({ email: emailProp }: VerifyEmailFormProps) => {
   });
 
   useEffect(() => {
-    // If we have both email and token from the URL, automatically attempt verification
     if (urlEmail && urlToken) {
       mutate({ email: urlEmail, token: urlToken });
     }
@@ -112,7 +115,10 @@ const VerifyEmailForm = ({ email: emailProp }: VerifyEmailFormProps) => {
           <p className="text-sm text-muted-foreground">
             Your email has been verified successfully. You can now log in.
           </p>
-          <Link to="/" className="w-full">
+          <Link
+            to={returnUrl ? decodeURIComponent(returnUrl) : "/"}
+            className="w-full"
+          >
             <Button className="w-full">Go to Login</Button>
           </Link>
         </div>

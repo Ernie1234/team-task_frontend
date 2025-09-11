@@ -1,11 +1,18 @@
 import { baseURL } from "@/lib/base-url";
 import { Button } from "../ui/button";
 
-const GoogleOauthButton = (props: { label: string }) => {
-  const { label } = props;
+const GoogleOauthButton = (props: {
+  label: string;
+  returnUrl?: string | null;
+}) => {
+  const { label, returnUrl } = props;
 
   const handleClick = () => {
-    window.location.href = `${baseURL}/auth/google`;
+    // Append returnUrl as a query parameter if it exists
+    const redirectUrl = returnUrl
+      ? `${baseURL}/auth/google?returnUrl=${returnUrl}`
+      : `${baseURL}/auth/google`;
+    window.location.href = redirectUrl;
   };
   return (
     <Button
