@@ -14,6 +14,8 @@ import {
   EditProjectPayloadType,
   ProjectByIdPayloadType,
   ProjectResponseType,
+  RecentActivitiesByWorkspaceIdPayloadType,
+  RecentActivitiesByWorkspaceIdResponseType,
 } from "../types/api.type";
 import {
   AllWorkspaceResponseType,
@@ -195,6 +197,15 @@ export const deleteProjectMutationFn = async ({
   const response = await API.delete(
     `/project/workspace/${workspaceId}/all-projects/${projectId}/delete`
   );
+  return response.data;
+};
+
+//*******RECENT ACTIVITIES ********************************
+//************************* */
+export const getwWorkspaceRecentActivitesQueryFn = async ({
+  workspaceId,
+}: RecentActivitiesByWorkspaceIdPayloadType): Promise<RecentActivitiesByWorkspaceIdResponseType> => {
+  const response = await API.get(`/activities/workspace/${workspaceId}`);
   return response.data;
 };
 

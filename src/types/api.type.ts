@@ -275,6 +275,27 @@ export type ProjectByIdPayloadType = {
   projectId: string;
 };
 
+// RECENT ACTIVITIES IN WORKSPACE
+export type RecentActivitiesByWorkspaceIdPayloadType = {
+  workspaceId: string;
+};
+export type RecentActivitiesByWorkspaceIdResponseType = {
+  message: string;
+  status: boolean;
+  data: {
+    message: string;
+    user: {
+      _id: string;
+      name: string;
+      profilePicture: string | null;
+      email: string;
+    };
+    workspaceId: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }[];
+};
+
 //********** */ TASK TYPES ************************
 //************************************************* */
 
