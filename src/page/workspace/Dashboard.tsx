@@ -9,6 +9,7 @@ import RecentTasks from "@/components/workspace/task/recent-tasks";
 import RecentMembers from "@/components/workspace/member/recent-members";
 import RecentActivites from "@/components/workspace/common/RecentActivites";
 import { TaskChart } from "@/components/workspace/common/TaskChart";
+import ChatWidget from "@/components/chat/ChatWidget";
 
 const WorkspaceDashboard = () => {
   const { onOpen } = useCreateProjectDialog();
@@ -61,6 +62,7 @@ const WorkspaceDashboard = () => {
         </div>
         <div className="flex flex-col space-y-4 w-full lg:w-4/12">
           <TaskChart />
+          <ChatWidget />
           <RecentActivites title="Recent Activities" />
         </div>
       </div>

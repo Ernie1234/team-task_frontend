@@ -9,6 +9,7 @@ import Tasks from "@/page/workspace/Tasks";
 import { AUTH_ROUTES, BASE_ROUTE, PROTECTED_ROUTES } from "./routePaths";
 import InviteUser from "@/page/invite/InviteUser";
 import NotificationPage from "@/page/workspace/Notification";
+import WorkspaceChat from "@/page/workspace/Chat";
 import VerifyEmail from "@/components/auth/verify-email";
 
 export const authenticationRoutePaths = [
@@ -24,7 +25,9 @@ export const protectedRoutePaths = [
   { path: PROTECTED_ROUTES.MEMBERS, element: <Members /> },
   { path: PROTECTED_ROUTES.NOTIFICATION, element: <NotificationPage /> },
   { path: PROTECTED_ROUTES.SETTINGS, element: <Settings /> },
+  { path: PROTECTED_ROUTES.CHAT, element: <WorkspaceChat /> },
   { path: PROTECTED_ROUTES.PROJECT_DETAILS, element: <ProjectDetails /> },
+  { path: PROTECTED_ROUTES.PROJECT_CHAT, element: <WorkspaceChat /> },
 ];
 
 export const baseRoutePaths = [

@@ -33,7 +33,7 @@ export type UserType = {
   _id: string;
   name: string;
   email: string;
-  profilePicture: string | null;
+  profilePicture: string | undefined;
   isActive: true;
   lastLogin: null;
   createdAt: Date;

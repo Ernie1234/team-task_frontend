@@ -7,6 +7,9 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getProjectByIdQueryFn } from "@/lib/api";
 import PermissionsGuard from "@/components/resuable/permission-guard";
 import { Permissions } from "@/constant";
+import { Button } from "@/components/ui/button";
+import { MessageCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const ProjectHeader = () => {
   const param = useParams();
@@ -52,7 +55,15 @@ const ProjectHeader = () => {
           <EditProjectDialog project={project} />
         </PermissionsGuard>
       </div>
-      <CreateTaskDialog projectId={projectId} />
+      <div className="flex items-center space-x-2">
+        <Button variant="outline" size="sm" asChild>
+          <Link to={`/workspace/${workspaceId}/project/${projectId}/chat`}>
+            <MessageCircle className="w-4 h-4 mr-2" />
+            Project Chat
+          </Link>
+        </Button>
+        <CreateTaskDialog projectId={projectId} />
+      </div>
     </div>
   );
 };

@@ -318,3 +318,308 @@ export const markAllNotificationsAsRead = async (
   console.log("mark all notification as read: ", response.data);
   return response.data;
 };
+
+//*******CHAT ********************************
+//************************* */
+
+// Workspace chat
+export const getWorkspaceMessagesQueryFn = async ({
+  workspaceId,
+  limit,
+  skip,
+  before,
+}: {
+  workspaceId: string;
+  limit?: number;
+  skip?: number;
+  before?: string;
+}): Promise<{
+  status: boolean;
+  message: string;
+  messages: any[];
+  pagination: { hasMore: boolean; total: number };
+}> => {
+  const params = new URLSearchParams();
+  if (limit) params.append("limit", limit.toString());
+  if (skip) params.append("skip", skip.toString());
+  if (before) params.append("before", before);
+  
+  const queryString = params.toString();
+  const url = `/chat/workspace/${workspaceId}/messages${queryString ? `?${queryString}` : ""}`;
+  
+  const response = await API.get(url);
+  return response.data;
+};
+
+// Project chat
+export const getProjectMessagesQueryFn = async ({
+  projectId,
+  limit,
+  skip,
+  before,
+}: {
+  projectId: string;
+  limit?: number;
+  skip?: number;
+  before?: string;
+}): Promise<{
+  status: boolean;
+  message: string;
+  messages: any[];
+  pagination: { hasMore: boolean; total: number };
+}> => {
+  const params = new URLSearchParams();
+  if (limit) params.append("limit", limit.toString());
+  if (skip) params.append("skip", skip.toString());
+  if (before) params.append("before", before);
+  
+  const queryString = params.toString();
+  const url = `/chat/project/${projectId}/messages${queryString ? `?${queryString}` : ""}`;
+  
+  const response = await API.get(url);
+  return response.data;
+};
+
+// Direct messages
+export const getDirectMessagesQueryFn = async ({
+  otherUserId,
+  limit,
+  skip,
+  before,
+}: {
+  otherUserId: string;
+  limit?: number;
+  skip?: number;
+  before?: string;
+}): Promise<{
+  status: boolean;
+  message: string;
+  messages: any[];
+  pagination: { hasMore: boolean; total: number };
+}> => {
+  const params = new URLSearchParams();
+  if (limit) params.append("limit", limit.toString());
+  if (skip) params.append("skip", skip.toString());
+  if (before) params.append("before", before);
+  
+  const queryString = params.toString();
+  const url = `/chat/direct/${otherUserId}/messages${queryString ? `?${queryString}` : ""}`;
+  
+  const response = await API.get(url);
+  return response.data;
+};
+
+// Get online users
+export const getOnlineUsersQueryFn = async (workspaceId: string): Promise<{
+  status: boolean;
+  message: string;
+  onlineUsers: any[];
+}> => {
+  const response = await API.get(`/chat/workspace/${workspaceId}/online-users`);
+  return response.data;
+};
+
+// Get workspace members for chat
+export const getWorkspaceMembersForChatQueryFn = async (workspaceId: string): Promise<{
+  status: boolean;
+  message: string;
+  members: any[];
+}> => {
+  const response = await API.get(`/chat/workspace/${workspaceId}/members`);
+  return response.data;
+};
+
+// Search messages
+export const searchWorkspaceMessagesQueryFn = async ({
+  workspaceId,
+  query,
+  limit,
+}: {
+  workspaceId: string;
+  query: string;
+  limit?: number;
+}): Promise<{
+  status: boolean;
+  message: string;
+  messages: any[];
+  query: string;
+}> => {
+  const params = new URLSearchParams();
+  params.append("q", query);
+  if (limit) params.append("limit", limit.toString());
+  
+  const response = await API.get(`/chat/workspace/${workspaceId}/search?${params.toString()}`);
+  return response.data;
+};
+
+// Get direct conversations
+export const getDirectConversationsQueryFn = async (): Promise<{
+  status: boolean;
+  message: string;
+  conversations: any[];
+}> => {
+  const response = await API.get("/chat/direct/conversations");
+  return response.data;
+};
+
+// Mark messages as read
+export const markMessagesAsReadMutationFn = async (lastMessageId?: string): Promise<{
+  status: boolean;
+  message: string;
+}> => {
+  const response = await API.post("/chat/messages/mark-read", {
+    lastMessageId,
+  });
+  return response.data;
+};
+
+// Get workspace chat stats
+export const getWorkspaceChatStatsQueryFn = async (workspaceId: string): Promise<{
+  status: boolean;
+  message: string;
+  stats: {
+    totalMessages: number;
+    todayMessages: number;
+    activeUsers: number;
+  };
+}> => {
+  const response = await API.get(`/chat/workspace/${workspaceId}/stats`);
+  return response.data;
+};
+
+// Wrapper functions for chat components
+export const getChatMessages = async (
+  type: "workspace" | "project" | "direct",
+  params: {
+    workspace?: string;
+    project?: string;
+    otherUserId?: string;
+    limit?: number;
+    skip?: number;
+    before?: string;
+  }
+) => {
+  switch (type) {
+    case "workspace":
+      if (!params.workspace) throw new Error("Workspace ID is required");
+      const workspaceResponse = await getWorkspaceMessagesQueryFn({
+        workspaceId: params.workspace,
+        limit: params.limit,
+        skip: params.skip,
+        before: params.before,
+      });
+      return {
+        messages: workspaceResponse.messages,
+        hasMore: workspaceResponse.pagination.hasMore,
+      };
+      
+    case "project":
+      if (!params.project) throw new Error("Project ID is required");
+      const projectResponse = await getProjectMessagesQueryFn({
+        projectId: params.project,
+        limit: params.limit,
+        skip: params.skip,
+        before: params.before,
+      });
+      return {
+        messages: projectResponse.messages,
+        hasMore: projectResponse.pagination.hasMore,
+      };
+      
+    case "direct":
+      if (!params.otherUserId) throw new Error("Other user ID is required");
+      const directResponse = await getDirectMessagesQueryFn({
+        otherUserId: params.otherUserId,
+        limit: params.limit,
+        skip: params.skip,
+        before: params.before,
+      });
+      return {
+        messages: directResponse.messages,
+        hasMore: directResponse.pagination.hasMore,
+      };
+      
+    default:
+      throw new Error(`Invalid chat type: ${type}`);
+  }
+};
+
+export const getOnlineUsers = async (workspaceId: string) => {
+  const response = await getOnlineUsersQueryFn(workspaceId);
+  return response.onlineUsers;
+};
+
+export const getWorkspaceMembers = async (workspaceId: string) => {
+  const response = await getWorkspaceMembersForChatQueryFn(workspaceId);
+  return response.members;
+};
+
+// Send message functions
+export const sendWorkspaceMessageMutationFn = async ({
+  workspaceId,
+  content,
+  messageType,
+  replyTo,
+}: {
+  workspaceId: string;
+  content: string;
+  messageType?: "text" | "image" | "file" | "system";
+  replyTo?: string;
+}): Promise<{
+  status: boolean;
+  message: string;
+  data: any;
+}> => {
+  const response = await API.post(`/chat/workspace/${workspaceId}/messages`, {
+    content,
+    messageType,
+    replyTo,
+  });
+  return response.data;
+};
+
+export const sendProjectMessageMutationFn = async ({
+  projectId,
+  content,
+  messageType,
+  replyTo,
+}: {
+  projectId: string;
+  content: string;
+  messageType?: "text" | "image" | "file" | "system";
+  replyTo?: string;
+}): Promise<{
+  status: boolean;
+  message: string;
+  data: any;
+}> => {
+  const response = await API.post(`/chat/project/${projectId}/messages`, {
+    content,
+    messageType,
+    replyTo,
+  });
+  return response.data;
+};
+
+export const sendDirectMessageMutationFn = async ({
+  otherUserId,
+  content,
+  messageType,
+  replyTo,
+}: {
+  otherUserId: string;
+  content: string;
+  messageType?: "text" | "image" | "file" | "system";
+  replyTo?: string;
+}): Promise<{
+  status: boolean;
+  message: string;
+  data: any;
+}> => {
+  const response = await API.post(`/chat/direct/${otherUserId}/messages`, {
+    content,
+    messageType,
+    replyTo,
+  });
+  return response.data;
+};
