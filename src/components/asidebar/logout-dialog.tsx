@@ -13,6 +13,8 @@ import { logoutMutationFn } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Loader } from "lucide-react";
+import socketService from "@/lib/socket";
+import useChatStore from "@/hooks/use-chat-store";
 
 const LogoutDialog = (props: {
   isOpen: boolean;
@@ -26,6 +28,9 @@ const LogoutDialog = (props: {
   const { mutate, isPending } = useMutation({
     mutationFn: logoutMutationFn,
     onSuccess: () => {
+      // Closing the socket marks this user offline for everyone else
+      socketService.disconnect();
+      useChatStore.getState().resetPresence();
       queryClient.resetQueries({
         queryKey: ["authUser"],
       });

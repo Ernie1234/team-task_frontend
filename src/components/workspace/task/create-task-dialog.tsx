@@ -13,10 +13,10 @@ const CreateTaskDialog = (props: { projectId?: string }) => {
   return (
     <div>
       <Dialog modal={true} open={isOpen} onOpenChange={setIsOpen}>
-        <DialogTrigger>
-          <Button>
-            <Plus />
-            New Task
+        <DialogTrigger asChild>
+          <Button className="h-9 gap-1.5 bg-gradient-to-br from-primary to-primary-2 text-primary-foreground shadow-sm hover:brightness-110">
+            <Plus className="h-4 w-4" />
+            New task
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-lg max-h-auto my-5 border-0">

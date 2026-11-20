@@ -16,6 +16,9 @@ export const PROTECTED_ROUTES = {
   NOTIFICATION: "/workspace/:workspaceId/notifications",
   SETTINGS: "/workspace/:workspaceId/settings",
   CHAT: "/workspace/:workspaceId/chat",
+  NOTES: "/workspace/:workspaceId/notes",
+  CALENDAR: "/workspace/:workspaceId/calendar",
+  NOTE: "/workspace/:workspaceId/notes/:noteId",
   PROJECT_DETAILS: "/workspace/:workspaceId/project/:projectId",
   PROJECT_CHAT: "/workspace/:workspaceId/project/:projectId/chat",
 };

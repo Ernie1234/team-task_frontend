@@ -10,6 +10,7 @@ import {
 import { Separator } from "./ui/separator";
 import { Link, useLocation } from "react-router-dom";
 import useWorkspaceId from "@/hooks/use-workspace-id";
+import NotificationBell from "@/components/workspace/notification/notification-bell";
 
 const Header = () => {
   const location = useLocation();
@@ -18,6 +19,9 @@ const Header = () => {
   const pathname = location.pathname;
 
   const getPageLabel = (pathname: string) => {
+    if (pathname.includes("/chat")) return "Chat";
+    if (pathname.includes("/notes")) return "Notes";
+    if (pathname.includes("/calendar")) return "Calendar";
     if (pathname.includes("/project/")) return "Project";
     if (pathname.includes("/settings")) return "Settings";
     if (pathname.includes("/tasks")) return "Tasks";
@@ -58,6 +62,9 @@ const Header = () => {
             )}
           </BreadcrumbList>
         </Breadcrumb>
+      </div>
+      <div className="flex items-center gap-2 px-3">
+        <NotificationBell />
       </div>
     </header>
   );

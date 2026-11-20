@@ -28,35 +28,18 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "../../ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import useWorkspaceId from "@/hooks/use-workspace-id";
-import {
-  TaskPriorityEnum,
-  TaskPriorityEnumType,
-  TaskStatusEnum,
-  TaskStatusEnumType,
-} from "@/constant";
+import { TaskPriorityEnum, TaskStatusEnum } from "@/constant";
 import useGetWorkspaceMembers from "@/hooks/api/use-get-workspace-members";
 import { editTaskMutationFn } from "@/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
+import type { TaskType } from "@/types/api.type";
 
 export default function EditTaskForm({
   task,
   onClose,
 }: {
-  task: {
-    _id: string;
-    title: string;
-    description?: string;
-    project?: string;
-    priority: TaskPriorityEnumType;
-    status: TaskStatusEnumType;
-    assignedTo: string;
-    createdBy?: string;
-    dueDate: string;
-    taskCode: string;
-    createdAt?: string;
-    updatedAt?: string;
-  };
+  task: TaskType;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -107,7 +90,7 @@ export default function EditTaskForm({
       description: task?.description ?? "",
       status: task?.status ?? "TODO",
       priority: task?.priority ?? "MEDIUM",
-      assignedTo: task?.assignedTo ?? "",
+      assignedTo: task?.assignedTo?._id ?? "",
       dueDate: task?.dueDate ? new Date(task.dueDate) : new Date(),
     },
   });
@@ -118,7 +101,7 @@ export default function EditTaskForm({
     console.log("the task here: ", task);
     console.log("Member's options here: ", membersOptions);
 
-    const projectId = task.project;
+    const projectId = task.project?._id;
 
     // Check if the projectId is missing
     if (!projectId) {

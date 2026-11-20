@@ -6,16 +6,16 @@ import "./index.css";
 import App from "./App.tsx";
 import QueryProvider from "./context/query-provider.tsx";
 import { Toaster } from "./components/ui/toaster.tsx";
-import { ThemeProvider } from "./hooks/ThemeContext.tsx";
+import AppearanceProvider from "./components/appearance/appearance-provider.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryProvider>
-      <ThemeProvider>
+      <AppearanceProvider>
         <NuqsAdapter>
           <App />
         </NuqsAdapter>
-      </ThemeProvider>
+      </AppearanceProvider>
       <Toaster />
     </QueryProvider>
   </StrictMode>

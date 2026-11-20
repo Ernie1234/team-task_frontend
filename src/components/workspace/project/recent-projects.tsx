@@ -39,7 +39,7 @@ const RecentProjects = () => {
 
       <ul role="list" className="space-y-2">
         {projects.map((project) => {
-          const name = project.createdBy.name;
+          const name = project.createdBy?.name;
           const initials = getAvatarFallbackText(name);
           const avatarColor = getAvatarColor(name);
 
@@ -71,7 +71,7 @@ const RecentProjects = () => {
                     <span className="text-sm text-gray-500">Created by</span>
                     <Avatar className="hidden h-9 w-9 sm:flex">
                       <AvatarImage
-                        src={project.createdBy.profilePicture || ""}
+                        src={project.createdBy?.profilePicture || ""}
                         alt="Avatar"
                       />
                       <AvatarFallback className={avatarColor}>

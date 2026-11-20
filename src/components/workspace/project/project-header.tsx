@@ -1,29 +1,21 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { useParams } from "react-router-dom";
-import CreateTaskDialog from "../task/create-task-dialog";
+import { Link, useParams } from "react-router-dom";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { MessageCircle } from "lucide-react";
 import EditProjectDialog from "./edit-project-dialog";
 import useWorkspaceId from "@/hooks/use-workspace-id";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getProjectByIdQueryFn } from "@/lib/api";
 import PermissionsGuard from "@/components/resuable/permission-guard";
 import { Permissions } from "@/constant";
 import { Button } from "@/components/ui/button";
-import { MessageCircle } from "lucide-react";
-import { Link } from "react-router-dom";
+import { PageHeader } from "@/components/shared/page-header";
 
 const ProjectHeader = () => {
-  const param = useParams();
-  const projectId = param.projectId as string;
-
+  const projectId = useParams().projectId as string;
   const workspaceId = useWorkspaceId();
 
   const { data, isPending, isError } = useQuery({
     queryKey: ["singleProject", projectId],
-    queryFn: () =>
-      getProjectByIdQueryFn({
-        workspaceId,
-        projectId,
-      }),
+    queryFn: () => getProjectByIdQueryFn({ workspaceId, projectId }),
     staleTime: Infinity,
     enabled: !!projectId,
     placeholderData: keepPreviousData,
@@ -31,40 +23,34 @@ const ProjectHeader = () => {
 
   const project = data?.project;
 
-  // Fallback if no project data is found
-  const projectEmoji = project?.emoji || "📊";
-  const projectName = project?.name || "Untitled project";
-
-  const renderContent = () => {
-    if (isPending) return <span>Loading...</span>;
-    if (isError) return <span>Error occured</span>;
-    return (
-      <>
-        <span>{projectEmoji}</span>
-        {projectName}
-      </>
-    );
-  };
   return (
-    <div className="flex items-center justify-between space-y-2">
-      <div className="flex items-center gap-2">
-        <h2 className="flex items-center gap-3 text-xl font-medium truncate tracking-tight">
-          {renderContent()}
-        </h2>
-        <PermissionsGuard requiredPermission={Permissions.EDIT_PROJECT}>
-          <EditProjectDialog project={project} />
-        </PermissionsGuard>
-      </div>
-      <div className="flex items-center space-x-2">
-        <Button variant="outline" size="sm" asChild>
+    <PageHeader
+      eyebrow="Project"
+      icon={project?.emoji || "📊"}
+      title={
+        isPending ? (
+          <span className="inline-block h-8 w-48 animate-pulse rounded-md bg-muted" />
+        ) : isError ? (
+          "Project unavailable"
+        ) : (
+          <>
+            <span className="truncate">{project?.name || "Untitled project"}</span>
+            <PermissionsGuard requiredPermission={Permissions.EDIT_PROJECT}>
+              <EditProjectDialog project={project} />
+            </PermissionsGuard>
+          </>
+        )
+      }
+      description={project?.description || undefined}
+      actions={
+        <Button variant="outline" className="h-9 gap-1.5" asChild>
           <Link to={`/workspace/${workspaceId}/project/${projectId}/chat`}>
-            <MessageCircle className="w-4 h-4 mr-2" />
-            Project Chat
+            <MessageCircle className="h-4 w-4" />
+            Project chat
           </Link>
         </Button>
-        <CreateTaskDialog projectId={projectId} />
-      </div>
-    </div>
+      }
+    />
   );
 };
 

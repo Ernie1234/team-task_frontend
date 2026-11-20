@@ -34,6 +34,7 @@ export type UserType = {
   name: string;
   email: string;
   profilePicture: string | undefined;
+  appearance?: import("@/lib/appearance").Appearance | null;
   isActive: true;
   lastLogin: null;
   createdAt: Date;
@@ -54,18 +55,31 @@ export type CurrentUserResponseType = {
 //******** */ WORLSPACE TYPES ****************
 // ******************************************
 
-// types/api.type.ts or wherever you have your types
+export type NotificationType =
+  | "TASK_ASSIGNED"
+  | "TASK_UPDATED"
+  | "MEMBER_JOINED"
+  | "MEMBER_INVITED"
+  | "WELCOME"
+  | "GENERAL"
+  | "EVENT_REMINDER";
+
 export interface INotification {
   _id: string;
-  recipient: {
-    _id: string;
-    name: string;
-    email: string;
-    profilePicture?: string;
-  };
-  sender: { _id: string; name: string; email: string; profilePicture?: string };
+  // An id unless the server populated it
+  recipient:
+    | string
+    | {
+        _id: string;
+        name: string;
+        email: string;
+        profilePicture?: string;
+      };
+  sender: { _id: string; name: string; email: string; profilePicture?: string } | null;
+  workspaceId?: string;
+  type?: NotificationType;
   message: string;
-  link: string;
+  link?: string;
   isRead: boolean;
   createdAt: string;
   updatedAt: string;
@@ -82,6 +96,13 @@ export interface IActivity {
   createdAt: string;
   updatedAt: string;
 }
+
+export type WorkspaceNotificationsResponseType = {
+  status: boolean;
+  message: string;
+  data: INotification[];
+  unreadCount: number;
+};
 
 export interface IWorkspace {
   _id: string;
@@ -101,7 +122,6 @@ export interface IWorkspace {
     joinedAt: string;
     createdAt: string;
   }[];
-  notifications: INotification[];
   activities: IActivity[];
   createdAt: string;
   updatedAt: string;
@@ -278,22 +298,35 @@ export type ProjectByIdPayloadType = {
 // RECENT ACTIVITIES IN WORKSPACE
 export type RecentActivitiesByWorkspaceIdPayloadType = {
   workspaceId: string;
+  page?: number;
+  limit?: number;
 };
+
+export type ActivityType = {
+  _id: string;
+  message: string;
+  user: {
+    _id: string;
+    name: string;
+    profilePicture: string | null;
+    email: string;
+  } | null;
+  workspaceId: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type RecentActivitiesByWorkspaceIdResponseType = {
   message: string;
   status: boolean;
-  data: {
-    message: string;
-    user: {
-      _id: string;
-      name: string;
-      profilePicture: string | null;
-      email: string;
-    };
-    workspaceId: string;
-    createdAt: Date;
-    updatedAt: Date;
-  }[];
+  data: ActivityType[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalPages: number;
+    totalActivities: number;
+    hasMore: boolean;
+  };
 };
 
 //********** */ TASK TYPES ************************
@@ -309,6 +342,7 @@ export type CreateTaskPayloadType = {
     status: TaskStatusEnumType;
     assignedTo: string;
     dueDate: string;
+    parentTask?: string;
   };
 };
 
@@ -319,11 +353,11 @@ export type EditTaskPayloadType = {
   projectId: string;
   data: Partial<{
     title: string;
-    description: string;
+    description: string | null;
     priority: TaskPriorityEnumType;
     status: TaskStatusEnumType;
-    assignedTo: string;
-    dueDate: string;
+    assignedTo: string | null;
+    dueDate: string | null;
   }>;
 };
 
@@ -341,13 +375,23 @@ export type TaskType = {
   assignedTo: {
     _id: string;
     name: string;
+    email?: string;
     profilePicture: string | null;
   } | null;
-  createdBy?: string;
-  dueDate: string;
+  createdBy?: string | { _id: string; name: string; profilePicture?: string | null };
+  dueDate: string | null;
   taskCode: string;
   createdAt?: string;
   updatedAt?: string;
+  // Subtasks: the parent's id (or a summary when fetched on its own)
+  parentTask?: string | { _id: string; title: string; taskCode: string; status: TaskStatusEnumType } | null;
+  subtaskCount?: number;
+  subtaskDoneCount?: number;
+};
+
+export type TaskDetailResponseType = {
+  task: TaskType;
+  subtasks: TaskType[];
 };
 
 export type AllTaskPayloadType = {
@@ -360,6 +404,9 @@ export type AllTaskPayloadType = {
   dueDate?: string | null;
   pageNumber?: number | null;
   pageSize?: number | null;
+  parentTask?: string | null;
+  sortBy?: "createdAt" | "dueDate" | "priority" | "title" | "updatedAt" | null;
+  sortOrder?: "asc" | "desc" | null;
 };
 
 export type AllTaskResponseType = {
@@ -367,4 +414,110 @@ export type AllTaskResponseType = {
   tasks: TaskType[];
   pagination: PaginationType;
   totalCount: number;
+};
+
+export type DashboardType = {
+  totals: {
+    total: number;
+    open: number;
+    done: number;
+    inProgress: number;
+    overdue: number;
+    dueToday: number;
+    completedThisWeek: number;
+    completionRate: number;
+  };
+  byStatus: Record<TaskStatusEnumType, number>;
+  byPriority: Record<TaskPriorityEnumType, number>;
+  completedByDay: { date: string; count: number }[];
+  myTasks: TaskType[];
+  team: {
+    _id: string;
+    name: string;
+    profilePicture: string | null;
+    isOnline: boolean;
+    open: number;
+    overdue: number;
+    inProgress: number;
+  }[];
+};
+
+// NOTES (Notion-style pages)
+export type NoteAuthorType = { _id: string; name: string; profilePicture?: string | null };
+export type NoteVisibility = "private" | "workspace";
+
+/** Note without its document, as listed in the page tree */
+export type NoteSummaryType = {
+  _id: string;
+  title: string;
+  emoji: string | null;
+  excerpt: string;
+  workspace: string;
+  parentNote: string | null;
+  visibility: NoteVisibility;
+  createdBy: NoteAuthorType;
+  lastEditedBy: NoteAuthorType;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type NoteType = NoteSummaryType & {
+  /** Editor blocks (BlockNote JSON) */
+  content: Record<string, unknown>[];
+};
+
+export type UpdateNotePayloadType = Partial<{
+  title: string;
+  emoji: string | null;
+  content: Record<string, unknown>[];
+  excerpt: string;
+  visibility: NoteVisibility;
+  parentNote: string | null;
+}>;
+
+// CALENDAR
+export type CalendarEventType = {
+  _id: string;
+  title: string;
+  description: string;
+  location: string;
+  start: string;
+  /** Exclusive end (all-day: midnight after the last day) */
+  end: string;
+  allDay: boolean;
+  timeZone: string;
+  reminderMinutes: number | null;
+  source: "local" | "google";
+  syncToGoogle: boolean;
+  synced: boolean;
+  htmlLink: string | null;
+  meetLink: string | null;
+  syncError: string | null;
+  workspace: string | null;
+  updatedAt: string;
+};
+
+export type CalendarConnectionType =
+  | { connected: false }
+  | {
+      connected: true;
+      provider: "google";
+      email: string;
+      status: "active" | "error";
+      lastError: string | null;
+      lastSyncedAt: string | null;
+      timeZone: string | null;
+    };
+
+export type EventPayloadType = {
+  title: string;
+  description?: string;
+  location?: string;
+  start: string;
+  end: string;
+  allDay?: boolean;
+  timeZone: string;
+  reminderMinutes?: number | null;
+  syncToGoogle?: boolean;
+  workspaceId?: string;
 };

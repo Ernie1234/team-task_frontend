@@ -1,32 +1,21 @@
-import { Separator } from "@/components/ui/separator";
 import InviteMember from "@/components/workspace/member/invite-member";
 import AllMembers from "@/components/workspace/member/all-members";
-import WorkspaceHeader from "@/components/workspace/common/workspace-header";
+import { PageHeader, SectionCard } from "@/components/shared/page-header";
+import { useAuthContext } from "@/context/auth-provider";
 
 export default function Members() {
+  const { workspace } = useAuthContext();
   return (
-    <div className="w-full h-auto pt-2">
-      <WorkspaceHeader />
-      <Separator className="my-4 " />
-      <main>
-        <div className="w-full max-w-3xl mx-auto pt-3">
-          <div>
-            <h2 className="text-lg leading-[30px] font-semibold mb-1">
-              Workspace members
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Workspace members can view and join all Workspace project, tasks
-              and create new task in the Workspace.
-            </p>
-          </div>
-          <Separator className="my-4" />
-
-          <InviteMember />
-          <Separator className="my-4 !h-[0.5px]" />
-
-          <AllMembers />
-        </div>
-      </main>
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+      <PageHeader
+        eyebrow={workspace?.name ?? "Workspace"}
+        title="Members"
+        description="Everyone here can see the workspace's projects and tasks, and create new tasks."
+      />
+      <InviteMember />
+      <SectionCard title="People" description="Change what each person can do in this workspace.">
+        <AllMembers />
+      </SectionCard>
     </div>
   );
 }

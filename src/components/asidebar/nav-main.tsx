@@ -4,8 +4,9 @@ import {
   Users,
   CheckCircle,
   LayoutDashboard,
-  Bell,
   MessageCircle,
+  NotebookPen,
+  CalendarDays,
 } from "lucide-react";
 import {
   SidebarGroup,
@@ -18,6 +19,7 @@ import { Link, useLocation } from "react-router-dom";
 import useWorkspaceId from "@/hooks/use-workspace-id";
 import { useAuthContext } from "@/context/auth-provider";
 import { Permissions } from "@/constant";
+import { useChatUnreadTotal } from "@/hooks/use-conversations";
 
 type ItemType = {
   title: string;
@@ -28,11 +30,7 @@ type ItemType = {
 
 export function NavMain() {
   const { hasPermission, workspace } = useAuthContext();
-
-  const unreadNotificationsCount = workspace?.notifications
-    ? workspace.notifications.filter((notification) => !notification.isRead)
-        .length
-    : 0;
+  const unreadChatCount = useChatUnreadTotal(workspace?._id);
 
   const canManageSettings = hasPermission(
     Permissions.MANAGE_WORKSPACE_SETTINGS
@@ -57,6 +55,18 @@ export function NavMain() {
       showBadge: false,
     },
     {
+      title: "Calendar",
+      url: `/workspace/${workspaceId}/calendar`,
+      icon: CalendarDays,
+      showBadge: false,
+    },
+    {
+      title: "Notes",
+      url: `/workspace/${workspaceId}/notes`,
+      icon: NotebookPen,
+      showBadge: false,
+    },
+    {
       title: "Members",
       url: `/workspace/${workspaceId}/members`,
       icon: Users,
@@ -66,12 +76,6 @@ export function NavMain() {
       title: "Chat",
       url: `/workspace/${workspaceId}/chat`,
       icon: MessageCircle,
-      showBadge: false,
-    },
-    {
-      title: "Notifications",
-      url: `/workspace/${workspaceId}/notifications`,
-      icon: Bell,
       showBadge: true,
     },
 
@@ -92,18 +96,20 @@ export function NavMain() {
         {items.map((item) => (
           <SidebarMenuItem key={item.title}>
             <SidebarMenuButton
-              isActive={item.url === pathname}
+              isActive={item.title === "Notes" ? pathname.startsWith(item.url) : item.url === pathname}
               asChild
-              className="hover:bg-muted-foreground/10"
             >
               <Link to={item.url} className="!text-[15px]">
                 <item.icon />
                 <span>{item.title}</span>
               </Link>
             </SidebarMenuButton>
-            {item.showBadge && unreadNotificationsCount > 0 && (
-              <SidebarMenuBadge>{unreadNotificationsCount}</SidebarMenuBadge>
-            )}
+            {item.showBadge && (() => {
+              const count = item.title === "Chat" ? unreadChatCount : 0;
+              return count > 0 ? (
+                <SidebarMenuBadge>{count > 99 ? "99+" : count}</SidebarMenuBadge>
+              ) : null;
+            })()}
           </SidebarMenuItem>
         ))}
       </SidebarMenu>

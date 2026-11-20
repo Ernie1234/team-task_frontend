@@ -11,18 +11,22 @@ const EditProjectDialog = (props: { project?: ProjectType }) => {
     setIsOpen(false);
   };
   return (
-    <div>
+    <>
       <Dialog modal={true} open={isOpen} onOpenChange={setIsOpen}>
-        <DialogTrigger className="mt-1.5" asChild>
-          <button>
-            <Edit3 className="w-5 h-5" />
+        <DialogTrigger asChild>
+          <button
+            type="button"
+            aria-label="Edit project"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Edit3 className="h-4 w-4" />
           </button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-lg border-0">
           <EditProjectForm project={props.project} onClose={onClose} />
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
 

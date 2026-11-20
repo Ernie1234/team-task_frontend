@@ -11,6 +11,17 @@ import InviteUser from "@/page/invite/InviteUser";
 import NotificationPage from "@/page/workspace/Notification";
 import WorkspaceChat from "@/page/workspace/Chat";
 import VerifyEmail from "@/components/auth/verify-email";
+import { lazy, Suspense } from "react";
+import CalendarPage from "@/page/workspace/Calendar";
+import { Loader2 } from "lucide-react";
+
+// Notes bring in the block editor: load them only when opened
+const Notes = lazy(() => import("@/page/workspace/Notes"));
+const notesPage = (
+  <Suspense fallback={<div className="flex h-[60vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
+    <Notes />
+  </Suspense>
+);
 
 export const authenticationRoutePaths = [
   { path: AUTH_ROUTES.SIGN_IN, element: <SignIn /> },
@@ -26,6 +37,9 @@ export const protectedRoutePaths = [
   { path: PROTECTED_ROUTES.NOTIFICATION, element: <NotificationPage /> },
   { path: PROTECTED_ROUTES.SETTINGS, element: <Settings /> },
   { path: PROTECTED_ROUTES.CHAT, element: <WorkspaceChat /> },
+  { path: PROTECTED_ROUTES.NOTES, element: notesPage },
+  { path: PROTECTED_ROUTES.CALENDAR, element: <CalendarPage /> },
+  { path: PROTECTED_ROUTES.NOTE, element: notesPage },
   { path: PROTECTED_ROUTES.PROJECT_DETAILS, element: <ProjectDetails /> },
   { path: PROTECTED_ROUTES.PROJECT_CHAT, element: <WorkspaceChat /> },
 ];

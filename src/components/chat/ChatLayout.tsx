@@ -1,220 +1,219 @@
-import React, { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { MessageCircle, WifiOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
+import useAuth from "@/hooks/api/use-auth";
+import useChatStore from "@/hooks/use-chat-store";
+import { useConversations } from "@/hooks/use-conversations";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { directRoomId } from "@/lib/chat-rooms";
+import type { Conversation } from "@/types/chat.type";
 import ChatSidebar from "./ChatSidebar";
 import ChatInterface from "./ChatInterface";
-import useChatStore, { ChatRoom } from "@/hooks/use-chat-store";
-import socketService from "@/lib/socket";
-import useAuth from "@/hooks/api/use-auth";
+import ChatDetails from "./ChatDetails";
 
 interface ChatLayoutProps {
-  workspaceId?: string;
+  workspaceId: string;
   projectId?: string;
   className?: string;
 }
 
-const ChatLayout: React.FC<ChatLayoutProps> = ({
-  workspaceId,
-  projectId,
-  className = "",
-}) => {
-  const { data: user } = useAuth();
-  const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  
-  const {
-    activeRoom,
-    setActiveRoom,
-    addRoom,
-    setWorkspaceRooms,
-    isConnected: socketConnected,
-  } = useChatStore();
-
-  // Monitor socket connection status
-  useEffect(() => {
-    if (!user) return;
-
-    console.log('💬 Initializing chat for user:', user.user._id);
-
-    // Socket connection handlers
-    const handleConnectionStatus = ({ connected }: { connected: boolean }) => {
-      console.log('🔌 Socket connection status changed:', connected);
-      setIsConnected(connected);
-      if (connected) {
-        console.log('✅ Chat connected successfully');
-      } else {
-        console.log('❌ Chat disconnected');
-      }
-    };
-
-    const handleConnectionError = ({ error }: { error: string }) => {
-      console.error('🔥 Socket connection error:', error);
-      setIsConnected(false);
-    };
-
-    const unsubscribe1 = socketService.on('connection:status', handleConnectionStatus);
-    const unsubscribe2 = socketService.on('connection:error', handleConnectionError);
-    
-    // Check if already connected
-    if (socketService.isConnected()) {
-      console.log('✅ Socket already connected');
-      setIsConnected(true);
-    } else {
-      // Explicitly connect socket after user is authenticated
-      console.log('⏳ Connecting socket...');
-      socketService.connect();
+const storage = {
+  get: (key: string) => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
     }
+  },
+  set: (key: string, value: string) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // Storage unavailable (private mode etc.): just don't remember
+    }
+  },
+};
+const lastRoomKey = (workspaceId: string) => `chat:lastRoom:${workspaceId}`;
+const DETAILS_KEY = "chat:detailsOpen";
 
-    return () => {
-      unsubscribe1();
-      unsubscribe2();
-    };
-  }, [user]);
-
-  // Set up workspace chat room when workspace changes
+const useWideScreen = () => {
+  const query = "(min-width: 1280px)";
+  const [wide, setWide] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
   useEffect(() => {
-    if (!workspaceId || !isConnected) return;
+    const mql = window.matchMedia(query);
+    const onChange = () => setWide(mql.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+  return wide;
+};
 
-    const setupWorkspaceChat = async () => {
-      try {
-        // Create default workspace room
-        const workspaceRoom: ChatRoom = {
-          id: `workspace:${workspaceId}`,
-          name: "General",
-          type: "workspace",
-          workspace: workspaceId,
-          unreadCount: 0,
-          isActive: false,
-        };
+/**
+ * Full-page, three-panel chat: conversations | conversation | details.
+ * The open conversation lives in the URL (?room=… or ?dm=<userId>) so links
+ * from elsewhere (dashboard, members) can open a chat directly.
+ */
+const ChatLayout = ({ workspaceId, projectId, className }: ChatLayoutProps) => {
+  const { data: auth } = useAuth();
+  const user = auth?.user;
+  const myId = user?._id;
+  const isMobile = useIsMobile();
+  const isWide = useWideScreen();
+  const isConnected = useChatStore((s) => s.isConnected);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { data: conversations, isLoading, isError, refetch } = useConversations(workspaceId);
 
-        // Add to store and set as default rooms
-        setWorkspaceRooms(workspaceId, [workspaceRoom]);
-        
-        // Auto-select workspace room if no room is selected
-        if (!activeRoom) {
-          setActiveRoom(workspaceRoom);
-          setSelectedRoom(workspaceRoom);
-        }
+  // Details panel: open by default on wide screens, remembered either way
+  const [detailsPreference, setDetailsPreference] = useState(() => storage.get(DETAILS_KEY) !== "closed");
+  const [detailsSheetOpen, setDetailsSheetOpen] = useState(false);
+  const detailsInline = isWide && detailsPreference;
+  const toggleDetails = useCallback(() => {
+    if (isWide) {
+      setDetailsPreference((open) => {
+        storage.set(DETAILS_KEY, open ? "closed" : "open");
+        return !open;
+      });
+    } else {
+      setDetailsSheetOpen((open) => !open);
+    }
+  }, [isWide]);
 
-        // Join the workspace room
-        await socketService.joinRoom("workspace", { workspace: workspaceId });
-      } catch (error) {
-        console.error("Failed to setup workspace chat:", error);
-      }
-    };
+  const roomParam = searchParams.get("room");
+  const dmParam = searchParams.get("dm");
 
-    setupWorkspaceChat();
-  }, [workspaceId, isConnected, activeRoom, setActiveRoom, setWorkspaceRooms]);
+  // Which room to show: ?dm → ?room → project route → last opened → #general (desktop)
+  const requestedId = useMemo(() => {
+    if (dmParam && myId) return directRoomId(myId, dmParam);
+    if (roomParam) return roomParam;
+    if (projectId) return `project:${projectId}`;
+    if (isMobile) return null; // phones start on the list
+    return storage.get(lastRoomKey(workspaceId)) ?? `workspace:${workspaceId}`;
+  }, [dmParam, roomParam, projectId, isMobile, workspaceId, myId]);
 
-  // Set up project chat room when project changes
+  const active = useMemo(
+    () =>
+      conversations?.find((c) => c.id === requestedId) ??
+      (!isMobile && !dmParam ? conversations?.find((c) => c.type === "workspace") : undefined),
+    [conversations, requestedId, isMobile, dmParam]
+  );
+
+  // Normalise ?dm=<user> into ?room=<id> once we know the room exists
   useEffect(() => {
-    if (!projectId || !isConnected) return;
+    if (dmParam && active) setSearchParams({ room: active.id }, { replace: true });
+  }, [dmParam, active, setSearchParams]);
 
-    const setupProjectChat = async () => {
-      try {
-        // Create default project room
-        const projectRoom: ChatRoom = {
-          id: `project:${projectId}`,
-          name: "Project Discussion",
-          type: "project",
-          project: projectId,
-          unreadCount: 0,
-          isActive: false,
-        };
+  useEffect(() => {
+    if (active) storage.set(lastRoomKey(workspaceId), active.id);
+  }, [active, workspaceId]);
 
-        // Add to store
-        addRoom(projectRoom);
+  const select = useCallback(
+    (conversation: Conversation) => {
+      setDetailsSheetOpen(false);
+      setSearchParams({ room: conversation.id });
+    },
+    [setSearchParams]
+  );
+  const messageUser = useCallback(
+    (userId: string) => {
+      setDetailsSheetOpen(false);
+      setSearchParams({ dm: userId });
+    },
+    [setSearchParams]
+  );
+  const back = useCallback(() => setSearchParams({}), [setSearchParams]);
 
-        // Join the project room
-        await socketService.joinRoom("project", { project: projectId });
-      } catch (error) {
-        console.error("Failed to setup project chat:", error);
-      }
-    };
+  const me = useMemo(
+    () => (user ? { _id: user._id, name: user.name, profilePicture: user.profilePicture } : undefined),
+    [user]
+  );
 
-    setupProjectChat();
-  }, [projectId, isConnected, addRoom]);
-
-  const handleRoomSelect = (room: ChatRoom) => {
-    setSelectedRoom(room);
-    setActiveRoom(room);
-  };
-
-  if (!user) {
-    return (
-      <Card className={`flex items-center justify-center h-96 ${className}`}>
-        <div className="text-center">
-          <p className="text-muted-foreground">Please log in to access chat</p>
-        </div>
-      </Card>
-    );
-  }
-
-  // Don't block UI while connecting - allow REST API fallback
-  if (!socketConnected) {
-    return (
-      <Card className={`flex items-center justify-center h-96 ${className}`}>
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Connecting to chat...</p>
-        </div>
-      </Card>
-    );
-  }
+  const showList = !isMobile || !active;
+  const dmNotFound = !!dmParam && !!conversations && !active;
 
   return (
-    <Card className={`flex h-full overflow-hidden ${className}`}>
-      <ResizablePanelGroup direction="horizontal" className="h-full">
-        {/* Chat Sidebar */}
-        <ResizablePanel defaultSize={25} minSize={20} maxSize={40}>
+    <div className={cn("flex h-full min-h-0 flex-col overflow-hidden bg-background", className)}>
+      {!isConnected && (
+        <div className="flex items-center justify-center gap-2 border-b bg-amber-500/10 px-3 py-1.5 text-xs text-amber-600 dark:text-amber-400" role="status">
+          <WifiOff className="h-3.5 w-3.5" />
+          Reconnecting… you can keep typing; messages send when you're back online.
+        </div>
+      )}
+
+      <div className="flex min-h-0 flex-1">
+        {showList && (
           <ChatSidebar
-            currentWorkspaceId={workspaceId}
-            currentProjectId={projectId}
-            onRoomSelect={handleRoomSelect}
-            className="h-full"
+            conversations={conversations ?? []}
+            activeId={active?.id}
+            onSelect={select}
+            isLoading={isLoading}
+            myId={myId}
+            className={cn(isMobile ? "w-full" : "w-[320px] shrink-0 border-r lg:w-[360px]")}
           />
-        </ResizablePanel>
-        
-        <ResizableHandle withHandle />
-        
-        {/* Chat Interface */}
-        <ResizablePanel defaultSize={75} minSize={60}>
-          {selectedRoom || activeRoom ? (
+        )}
+
+        {isError ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
+            <p>Couldn't load your chats. Check that the server is running.</p>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Try again
+            </Button>
+          </div>
+        ) : active ? (
+          <>
             <ChatInterface
-              room={selectedRoom || activeRoom!}
-              workspaceId={workspaceId}
-              projectId={projectId}
-              className="h-full border-none"
+              key={active.id}
+              conversation={active}
+              myId={myId}
+              me={me}
+              onBack={isMobile ? back : undefined}
+              onMessageUser={messageUser}
+              detailsOpen={detailsInline || detailsSheetOpen}
+              onToggleDetails={toggleDetails}
+              className="min-w-0 flex-1"
             />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    className="w-8 h-8 text-muted-foreground"
-                    fill="none"
-                    height="24"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                    width="24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Welcome to Chat</h3>
-                <p className="text-muted-foreground">
-                  Select a conversation from the sidebar to start chatting
-                </p>
-              </div>
+            {detailsInline && (
+              <ChatDetails
+                conversation={active}
+                myId={myId}
+                onMessageUser={messageUser}
+                onClose={toggleDetails}
+                className="w-[340px] shrink-0 border-l"
+              />
+            )}
+            {!isWide && (
+              <Sheet open={detailsSheetOpen} onOpenChange={setDetailsSheetOpen}>
+                <SheetContent side="right" className="w-full p-0 sm:max-w-sm [&>button]:hidden">
+                  <SheetTitle className="sr-only">Conversation details</SheetTitle>
+                  <ChatDetails
+                    conversation={active}
+                    myId={myId}
+                    onMessageUser={messageUser}
+                    onClose={() => setDetailsSheetOpen(false)}
+                    className="h-full"
+                  />
+                </SheetContent>
+              </Sheet>
+            )}
+          </>
+        ) : !isMobile ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-primary-2/15">
+              <MessageCircle className="h-7 w-7 text-primary" />
             </div>
-          )}
-        </ResizablePanel>
-      </ResizablePanelGroup>
-    </Card>
+            <p className="max-w-xs text-sm text-muted-foreground">
+              {dmNotFound
+                ? "That person isn't in this workspace, so you can't message them here."
+                : isLoading
+                  ? "Loading your chats…"
+                  : "Pick a conversation, or tap someone in Active now."}
+            </p>
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 };
 

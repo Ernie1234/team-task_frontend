@@ -1,392 +1,288 @@
-import React, { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import { Search, SquarePen, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Hash,
-  MessageCircle,
-  Plus,
-  ChevronDown,
-  ChevronRight,
-  FolderOpen,
-} from "lucide-react";
-import useChatStore, { ChatRoom } from "@/hooks/use-chat-store";
-import { getWorkspaceMembers } from "@/lib/api";
-import useAuth from "@/hooks/api/use-auth";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import useChatStore from "@/hooks/use-chat-store";
+import { prefetchRoom } from "@/hooks/use-room-messages";
+import { formatListTime } from "@/lib/chat-time";
+import { messagePreview } from "@/lib/chat-files";
+import { conversationTitle, initials, NO_TYPERS } from "@/lib/chat-display";
+import type { Conversation } from "@/types/chat.type";
+import ConversationAvatar from "./ConversationAvatar";
+
+type Filter = "all" | "unread" | "channels" | "people";
+const FILTERS: { id: Filter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "unread", label: "Unread" },
+  { id: "channels", label: "Channels" },
+  { id: "people", label: "People" },
+];
 
 interface ChatSidebarProps {
-  currentWorkspaceId?: string;
-  currentProjectId?: string;
-  onRoomSelect: (room: ChatRoom) => void;
+  conversations: Conversation[];
+  activeId?: string;
+  onSelect: (conversation: Conversation) => void;
+  isLoading?: boolean;
+  myId?: string;
   className?: string;
 }
 
-interface WorkspaceMember {
-  _id: string;
-  name: string;
-  profilePicture?: string;
-}
-
-const ChatSidebar: React.FC<ChatSidebarProps> = ({
-  currentWorkspaceId,
-  currentProjectId,
-  onRoomSelect,
-  className = "",
+const ConversationRow = ({
+  conversation,
+  isActive,
+  myId,
+  onSelect,
+}: {
+  conversation: Conversation;
+  isActive: boolean;
+  myId?: string;
+  onSelect: () => void;
 }) => {
-  const { data: user } = useAuth();
-  const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
-  const [workspacesCollapsed, setWorkspacesCollapsed] = useState(false);
-  const [projectsCollapsed, setProjectsCollapsed] = useState(false);
-  const [directsCollapsed, setDirectsCollapsed] = useState(false);
-  const [showNewDMDialog, setShowNewDMDialog] = useState(false);
+  const typers = useChatStore((state) => state.typingUsers[conversation.id] ?? NO_TYPERS);
+  const others = typers.filter((t) => t.userId !== myId);
+  const unread = conversation.unreadCount > 0;
+  const last = conversation.lastMessage;
 
-  const {
-    activeRoom,
-    workspaceRooms,
-    projectRooms,
-    directConversations,
-    setActiveRoom,
-    addRoom,
-  } = useChatStore();
-
-  const currentWorkspaceRooms = currentWorkspaceId ? (workspaceRooms[currentWorkspaceId] || []) : [];
-  const currentProjectRooms = currentProjectId ? (projectRooms[currentProjectId] || []) : [];
-
-  // Load workspace members for direct messaging
-  useEffect(() => {
-    const fetchWorkspaceMembers = async () => {
-      if (!currentWorkspaceId) return;
-
-      try {
-        const members = await getWorkspaceMembers(currentWorkspaceId);
-        setWorkspaceMembers(members);
-      } catch (error) {
-        console.error("Failed to fetch workspace members:", error);
-      }
-    };
-
-    fetchWorkspaceMembers();
-  }, [currentWorkspaceId]);
-
-  const getUserInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map(word => word[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const formatLastMessageTime = (date?: string) => {
-    if (!date) return "";
-    try {
-      return formatDistanceToNow(new Date(date), { addSuffix: true });
-    } catch {
-      return "";
-    }
-  };
-
-  const handleRoomClick = (room: ChatRoom) => {
-    setActiveRoom(room);
-    onRoomSelect(room);
-  };
-
-  const handleStartDirectMessage = async (otherUser: WorkspaceMember) => {
-    if (!user?.user?._id) {
-      console.error('Current user ID not found');
-      return;
-    }
-
-    // Create room ID with both user IDs sorted (matching backend format)
-    const participants = [user.user._id, otherUser._id].sort();
-    const roomId = `direct:${participants.join(':')}`;
-    
-    console.log('Starting DM with:', {
-      currentUser: user.user._id,
-      otherUser: otherUser._id,
-      participants,
-      roomId
-    });
-    
-    // Check if room already exists
-    const existingRoom = directConversations.find(r => r.id === roomId);
-    if (existingRoom) {
-      handleRoomClick(existingRoom);
-      setShowNewDMDialog(false);
-      return;
-    }
-
-    // Create new direct message room
-    const newRoom: ChatRoom = {
-      id: roomId,
-      name: otherUser.name,
-      type: "direct",
-      otherUser: {
-        _id: otherUser._id,
-        name: otherUser.name,
-        profilePicture: otherUser.profilePicture,
-      },
-      unreadCount: 0,
-      isActive: false,
-    };
-
-    addRoom(newRoom);
-    handleRoomClick(newRoom);
-    setShowNewDMDialog(false);
-  };
-
-  const RoomItem: React.FC<{ room: ChatRoom; icon: React.ReactNode }> = ({ room, icon }) => (
-    <Button
-      variant="ghost"
-      className={cn(
-        "w-full justify-start p-3 h-auto group",
-        activeRoom?.id === room.id && "bg-muted"
-      )}
-      onClick={() => handleRoomClick(room)}
-    >
-      <div className="flex items-center space-x-3 w-full">
-        <div className="flex-shrink-0">
-          {room.type === "direct" && room.otherUser ? (
-            <Avatar className="w-6 h-6">
-              <AvatarImage src={room.otherUser.profilePicture} alt={room.otherUser.name} />
-              <AvatarFallback className="text-xs">
-                {getUserInitials(room.otherUser.name)}
-              </AvatarFallback>
-            </Avatar>
-          ) : (
-            icon
-          )}
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between">
-            <span className={cn(
-              "text-sm truncate",
-              room.unreadCount > 0 && "font-semibold"
-            )}>
-              {room.type === "workspace" && "#"}
-              {room.name}
-            </span>
-            {room.unreadCount > 0 && (
-              <Badge variant="default" className="text-xs h-5 min-w-5 flex items-center justify-center">
-                {room.unreadCount > 99 ? "99+" : room.unreadCount}
-              </Badge>
-            )}
-          </div>
-          
-          {room.lastMessage && (
-            <div className="flex items-center justify-between mt-1">
-              <p className="text-xs text-muted-foreground truncate">
-                {room.lastMessage.sender.name}: {room.lastMessage.content}
-              </p>
-              <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
-                {formatLastMessageTime(room.lastMessage.createdAt)}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-    </Button>
-  );
+  let preview: React.ReactNode;
+  if (others.length > 0) {
+    preview = (
+      <span className="text-primary">
+        {conversation.type === "direct" ? "typing…" : `${others[0].userName.split(" ")[0]} is typing…`}
+      </span>
+    );
+  } else if (last) {
+    const who =
+      last.sender?._id === myId
+        ? "You: "
+        : conversation.type !== "direct" && last.sender
+          ? `${last.sender.name.split(" ")[0]}: `
+          : "";
+    preview = (
+      <span className={cn(last.isDeleted && "italic")}>
+        {who}
+        {messagePreview(last)}
+      </span>
+    );
+  } else {
+    preview = conversation.type === "direct" ? "Say hi 👋" : "No messages yet";
+  }
 
   return (
-    <div className={cn("flex flex-col h-full bg-muted/30 border-r", className)}>
-      {/* Sidebar Header */}
-      <div className="p-4 border-b">
-        <h2 className="text-lg font-semibold">Chat</h2>
-        <p className="text-sm text-muted-foreground">
-          {currentWorkspaceId ? "Workspace & Direct Messages" : "All Conversations"}
-        </p>
+    <button
+      type="button"
+      onClick={onSelect}
+      onMouseEnter={() => prefetchRoom(conversation)}
+      onFocus={() => prefetchRoom(conversation)}
+      aria-current={isActive ? "true" : undefined}
+      className={cn(
+        "group relative flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors",
+        "hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        isActive && "bg-muted"
+      )}
+    >
+      {isActive && <span className="absolute inset-y-3 left-0 w-1 rounded-full bg-gradient-to-b from-primary to-primary-2" aria-hidden />}
+      <ConversationAvatar conversation={conversation} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className={cn("truncate text-sm", unread ? "font-semibold" : "font-medium")}>
+            {conversationTitle(conversation)}
+          </p>
+          {last && (
+            <span className={cn("shrink-0 text-[11px] tabular-nums", unread ? "font-semibold text-primary" : "text-muted-foreground")}>
+              {formatListTime(last.createdAt)}
+            </span>
+          )}
+        </div>
+        <div className="mt-0.5 flex items-center justify-between gap-2">
+          <p className={cn("truncate text-xs", unread ? "font-medium text-foreground" : "text-muted-foreground")}>
+            {preview}
+          </p>
+          {unread && (
+            <span
+              className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-2 px-1.5 text-[11px] font-semibold text-primary-foreground"
+              aria-label={`${conversation.unreadCount} unread`}
+            >
+              {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
+            </span>
+          )}
+        </div>
       </div>
+    </button>
+  );
+};
 
-      {/* Chat Rooms */}
-      <ScrollArea className="flex-1">
-        <div className="p-2 space-y-2">
-          {/* Workspace Channels */}
-          {currentWorkspaceId && currentWorkspaceRooms.length > 0 && (
-            <Collapsible open={!workspacesCollapsed} onOpenChange={setWorkspacesCollapsed}>
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-between p-2 h-8 text-sm font-medium"
-                >
-                  <div className="flex items-center space-x-2">
-                    <Hash className="w-4 h-4" />
-                    <span>Workspace Channels</span>
-                  </div>
-                  {workspacesCollapsed ? (
-                    <ChevronRight className="w-4 h-4" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4" />
-                  )}
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-1">
-                {currentWorkspaceRooms.map((room) => (
-                  <RoomItem
-                    key={room.id}
-                    room={room}
-                    icon={<Hash className="w-4 h-4" />}
-                  />
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
-          )}
+// Messenger's "Active now" row: who you can reach right this second
+const ActiveNow = ({
+  people,
+  onSelect,
+}: {
+  people: Conversation[];
+  onSelect: (conversation: Conversation) => void;
+}) => {
+  const presence = useChatStore((s) => s.presence);
+  const online = people.filter((c) => presence[c.otherUser!._id]?.isOnline ?? c.otherUser?.isOnline);
+  if (online.length === 0) return null;
 
-          {/* Project Channels */}
-          {currentProjectId && currentProjectRooms.length > 0 && (
-            <>
-              <Separator />
-              <Collapsible open={!projectsCollapsed} onOpenChange={setProjectsCollapsed}>
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-between p-2 h-8 text-sm font-medium"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <FolderOpen className="w-4 h-4" />
-                      <span>Project Channels</span>
-                    </div>
-                    {projectsCollapsed ? (
-                      <ChevronRight className="w-4 h-4" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4" />
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-1">
-                  {currentProjectRooms.map((room) => (
-                    <RoomItem
-                      key={room.id}
-                      room={room}
-                      icon={<FolderOpen className="w-4 h-4" />}
-                    />
-                  ))}
-                </CollapsibleContent>
-              </Collapsible>
-            </>
-          )}
-
-          {/* Direct Messages */}
-          <Separator />
-          <Collapsible open={!directsCollapsed} onOpenChange={setDirectsCollapsed}>
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                className="w-full justify-between p-2 h-8 text-sm font-medium"
-              >
-                <div className="flex items-center space-x-2">
-                  <MessageCircle className="w-4 h-4" />
-                  <span>Direct Messages</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Dialog open={showNewDMDialog} onOpenChange={setShowNewDMDialog}>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowNewDMDialog(true);
-                        }}
-                      >
-                        <Plus className="w-3 h-3" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Start Direct Message</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <ScrollArea className="max-h-64">
-                          <div className="space-y-2">
-                            {workspaceMembers
-                              .filter(member => member._id !== user?.user._id)
-                              .map((member) => (
-                                <Button
-                                  key={member._id}
-                                  variant="ghost"
-                                  className="w-full justify-start p-3 h-auto"
-                                  onClick={() => handleStartDirectMessage(member)}
-                                >
-                                  <div className="flex items-center space-x-3">
-                                    <Avatar className="w-8 h-8">
-                                      <AvatarImage src={member.profilePicture} alt={member.name} />
-                                      <AvatarFallback className="text-xs">
-                                        {getUserInitials(member.name)}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <span className="text-sm">{member.name}</span>
-                                  </div>
-                                </Button>
-                              ))}
-                          </div>
-                        </ScrollArea>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                  {directsCollapsed ? (
-                    <ChevronRight className="w-4 h-4" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4" />
-                  )}
-                </div>
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-1">
-              {directConversations.map((room) => (
-                <RoomItem
-                  key={room.id}
-                  room={room}
-                  icon={<MessageCircle className="w-4 h-4" />}
-                />
-              ))}
-              {directConversations.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-4">
-                  No direct messages yet
-                </p>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
-      </ScrollArea>
-
-      {/* Sidebar Footer */}
-      <div className="p-4 border-t">
-        <div className="flex items-center space-x-3">
-          <Avatar className="w-8 h-8">
-            <AvatarImage src={user?.user?.profilePicture} alt={user?.user.name} />
-            <AvatarFallback className="text-xs">
-              {user?.user.name ? getUserInitials(user?.user.name) : "?"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{user?.user.name}</p>
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full" />
-              <span className="text-xs text-muted-foreground">Online</span>
-            </div>
-          </div>
-        </div>
+  return (
+    <div className="px-4 pb-1">
+      <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Active now</p>
+      <div className="-mx-1 flex gap-1 overflow-x-auto pb-2">
+        {online.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => onSelect(c)}
+            onMouseEnter={() => prefetchRoom(c)}
+            className="flex w-16 shrink-0 flex-col items-center gap-1 rounded-xl px-1 py-1.5 hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={`Message ${c.otherUser!.name}`}
+          >
+            <span className="relative">
+              <Avatar className="h-12 w-12 ring-2 ring-green-500/70 ring-offset-2 ring-offset-background">
+                <AvatarImage src={c.otherUser!.profilePicture} alt="" />
+                <AvatarFallback className="bg-muted text-sm">{initials(c.otherUser!.name)}</AvatarFallback>
+              </Avatar>
+              <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-green-500" />
+            </span>
+            <span className="w-full truncate text-center text-[11px] text-muted-foreground">
+              {c.otherUser!.name.split(" ")[0]}
+            </span>
+          </button>
+        ))}
       </div>
     </div>
+  );
+};
+
+/** Left panel: search, who's online, filters and every conversation. */
+const ChatSidebar = ({ conversations, activeId, onSelect, isLoading, myId, className }: ChatSidebarProps) => {
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
+
+  const people = useMemo(() => conversations.filter((c) => c.type === "direct" && c.otherUser), [conversations]);
+  const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return conversations.filter((c) => {
+      if (filter === "unread" && c.unreadCount === 0) return false;
+      if (filter === "channels" && c.type === "direct") return false;
+      if (filter === "people" && c.type !== "direct") return false;
+      if (!q) return true;
+      return (
+        c.name.toLowerCase().includes(q) ||
+        (c.type === "workspace" && "general".includes(q)) ||
+        !!c.otherUser?.email?.toLowerCase().includes(q)
+      );
+    });
+  }, [conversations, query, filter]);
+
+  const emptyText = query
+    ? `Nobody or nothing called “${query}”.`
+    : filter === "unread"
+      ? "You're all caught up."
+      : filter === "people"
+        ? "No one else is in this workspace yet. Invite people from Members."
+        : "No conversations yet.";
+
+  return (
+    <aside className={cn("flex min-h-0 flex-col bg-background", className)} aria-label="Conversations">
+      <div className="flex items-center justify-between px-4 pb-3 pt-4">
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-2xl font-bold tracking-tight">Chats</h2>
+          {totalUnread > 0 && (
+            <span className="text-xs font-medium text-primary">{totalUnread} unread</span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setFilter("people");
+            setQuery("");
+          }}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="New message"
+          title="New message"
+        >
+          <SquarePen className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="px-4 pb-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search people and channels"
+            className="h-10 rounded-full border-0 bg-muted pl-9 pr-8 focus-visible:ring-1"
+            aria-label="Search people and channels"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {!isLoading && !query && <ActiveNow people={people} onSelect={onSelect} />}
+
+      <div className="flex gap-1.5 px-4 pb-2" role="tablist" aria-label="Show">
+        {FILTERS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            role="tab"
+            aria-selected={filter === f.id}
+            onClick={() => setFilter(f.id)}
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              filter === f.id ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {f.label}
+            {f.id === "unread" && totalUnread > 0 && ` · ${totalUnread}`}
+          </button>
+        ))}
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+        {isLoading ? (
+          <div className="space-y-1 px-1 pt-1">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-2 py-2.5">
+                <Skeleton className="h-11 w-11 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-3.5 w-1/2" />
+                  <Skeleton className="h-3 w-3/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <p className="px-4 py-10 text-center text-sm text-muted-foreground">{emptyText}</p>
+        ) : (
+          <div className="space-y-0.5">
+            {filtered.map((conversation) => (
+              <ConversationRow
+                key={conversation.id}
+                conversation={conversation}
+                isActive={conversation.id === activeId}
+                myId={myId}
+                onSelect={() => onSelect(conversation)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </aside>
   );
 };
 

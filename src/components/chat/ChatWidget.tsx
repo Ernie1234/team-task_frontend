@@ -1,175 +1,221 @@
-import React from "react";
+import { Link } from "react-router-dom";
+import { ArrowRight, Mail, MessageCircle, Users, WifiOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageCircle, Users, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import PresenceDot from "@/components/presence/presence-dot";
+import { NO_MEMBERS } from "@/lib/chat-display";
 import useChatStore from "@/hooks/use-chat-store";
 import useWorkspaceId from "@/hooks/use-workspace-id";
 import useAuth from "@/hooks/api/use-auth";
+import { useConversations } from "@/hooks/use-conversations";
+import { formatLastSeen } from "@/lib/presence";
+import { formatListTime } from "@/lib/chat-time";
+import { messagePreview } from "@/lib/chat-files";
+import { cn } from "@/lib/utils";
+import type { OnlineUser } from "@/lib/socket";
+import ConversationAvatar from "./ConversationAvatar";
+import { conversationTitle, initials } from "@/lib/chat-display";
 
-interface ChatWidgetProps {
-  className?: string;
-}
+const MAX_AVATARS = 8;
 
-const ChatWidget: React.FC<ChatWidgetProps> = ({ className = "" }) => {
-  useAuth();
+const MemberAvatar = ({ member, isMe, chatUrl }: { member: OnlineUser; isMe: boolean; chatUrl: string }) => {
+  const avatar = (
+    <div className="relative">
+      <Avatar className={cn("h-9 w-9 transition-opacity", !member.isOnline && "opacity-50")}>
+        <AvatarImage src={member.profilePicture} alt={member.name} />
+        <AvatarFallback className="bg-muted text-xs">{initials(member.name)}</AvatarFallback>
+      </Avatar>
+      <PresenceDot userId={member._id} fallbackOnline={member.isOnline} />
+    </div>
+  );
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {isMe ? (
+          <div tabIndex={0} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {avatar}
+          </div>
+        ) : (
+          <Link
+            to={`${chatUrl}?dm=${member._id}`}
+            className="rounded-full transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={`Message ${member.name}`}
+          >
+            {avatar}
+          </Link>
+        )}
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="w-60 border bg-popover p-0 text-popover-foreground shadow-lg">
+        <div className="flex items-center gap-3 p-3">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={member.profilePicture} alt="" />
+            <AvatarFallback className="bg-muted text-xs">{initials(member.name)}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">
+              {member.name}
+              {isMe && <span className="font-normal text-muted-foreground"> (you)</span>}
+            </p>
+            {member.role && (
+              <p className="text-xs capitalize text-muted-foreground">{member.role.toLowerCase()}</p>
+            )}
+          </div>
+        </div>
+        <div className="space-y-1.5 border-t px-3 py-2.5 text-xs">
+          <p className="flex items-center gap-2">
+            <span className={cn("h-2 w-2 rounded-full", member.isOnline ? "bg-green-500" : "bg-gray-400")} />
+            {member.isOnline ? "Online now" : formatLastSeen(member.lastSeen)}
+          </p>
+          {member.email && (
+            <p className="flex items-center gap-2 text-muted-foreground">
+              <Mail className="h-3 w-3" />
+              <span className="truncate">{member.email}</span>
+            </p>
+          )}
+        </div>
+        {!isMe && (
+          <p className="flex items-center gap-1.5 border-t px-3 py-2 text-xs font-medium text-primary">
+            <MessageCircle className="h-3.5 w-3.5" /> Click to send a message
+          </p>
+        )}
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
+const ChatWidget = ({ className = "" }: { className?: string }) => {
+  const { data: authData } = useAuth();
+  const myId = authData?.user?._id;
   const workspaceId = useWorkspaceId();
-  const {
-    workspaceRooms,
-    directConversations,
-    onlineUsers,
-    isConnected,
-  } = useChatStore();
+  const members = useChatStore((s) => (workspaceId ? s.onlineUsers[workspaceId] : undefined) ?? NO_MEMBERS);
+  const isConnected = useChatStore((s) => s.isConnected);
+  const { data: conversations } = useConversations(workspaceId);
 
-  const currentWorkspaceRooms = workspaceId ? (workspaceRooms[workspaceId] || []) : [];
-  const workspaceOnlineUsers = workspaceId ? (onlineUsers[workspaceId] || []) : [];
-  const onlineCount = workspaceOnlineUsers.filter(u => u.isOnline).length;
+  const chatUrl = `/workspace/${workspaceId}/chat`;
+  const onlineCount = members.filter((m) => m.isOnline).length;
+  const offlineCount = members.length - onlineCount;
+  const totalUnread = (conversations ?? []).reduce((sum, c) => sum + c.unreadCount, 0);
+  const recent = (conversations ?? []).filter((c) => c.lastMessage).slice(0, 3);
 
-  // Get total unread messages
-  const totalUnread = [
-    ...currentWorkspaceRooms,
-    ...directConversations,
-  ].reduce((total, room) => total + room.unreadCount, 0);
-
-  // Get recent conversations with messages
-  const recentConversations = [
-    ...currentWorkspaceRooms,
-    ...directConversations,
-  ]
-    .filter(room => room.lastMessage)
-    .sort((a, b) => {
-      const aTime = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
-      const bTime = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
-      return bTime - aTime;
-    })
-    .slice(0, 3);
-
-  const getUserInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map(word => word[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const formatLastMessageTime = (date: string) => {
-    const messageDate = new Date(date);
-    const now = new Date();
-    const diffInHours = (now.getTime() - messageDate.getTime()) / (1000 * 60 * 60);
-
-    if (diffInHours < 1) {
-      return "now";
-    } else if (diffInHours < 24) {
-      return `${Math.floor(diffInHours)}h ago`;
-    } else {
-      return `${Math.floor(diffInHours / 24)}d ago`;
-    }
-  };
+  // Online first, then most recently seen
+  const sortedMembers = [...members].sort((a, b) => {
+    if (a.isOnline !== b.isOnline) return a.isOnline ? -1 : 1;
+    return new Date(b.lastSeen ?? 0).getTime() - new Date(a.lastSeen ?? 0).getTime();
+  });
 
   return (
     <Card className={className}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center space-x-2">
-            <MessageCircle className="w-5 h-5" />
-            <span>Chat Activity</span>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <MessageCircle className="h-5 w-5" />
+            Chat Activity
           </CardTitle>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             {totalUnread > 0 && (
-              <Badge variant="destructive" className="text-xs">
-                {totalUnread > 99 ? "99+" : totalUnread}
+              <Badge className="border-0 bg-gradient-to-r from-primary to-primary-2 text-xs text-primary-foreground">
+                {totalUnread > 99 ? "99+" : totalUnread} unread
               </Badge>
             )}
-            <Badge variant="secondary" className="text-xs flex items-center space-x-1">
-              <Users className="w-3 h-3" />
-              <span>{onlineCount} online</span>
+            <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+              <Users className="h-3 w-3" />
+              {onlineCount} online
             </Badge>
           </div>
         </div>
       </CardHeader>
-      
-      <CardContent className="space-y-3">
-        {/* Connection Status */}
+
+      <CardContent className="space-y-4">
         {!isConnected && (
-          <div className="text-center py-4 text-muted-foreground">
-            <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Chat disconnected</p>
+          <p className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground" role="status">
+            <WifiOff className="h-3.5 w-3.5" /> Reconnecting to chat…
+          </p>
+        )}
+
+        {members.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Team · hover for details, click to message</span>
+              <span>
+                {onlineCount} online · {offlineCount} offline
+              </span>
+            </div>
+            <TooltipProvider delayDuration={150}>
+              <div className="flex flex-wrap gap-2">
+                {sortedMembers.slice(0, MAX_AVATARS).map((member) => (
+                  <MemberAvatar key={member._id} member={member} isMe={member._id === myId} chatUrl={chatUrl} />
+                ))}
+                {sortedMembers.length > MAX_AVATARS && (
+                  <Link
+                    to={chatUrl}
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground hover:bg-muted/70"
+                    aria-label={`${sortedMembers.length - MAX_AVATARS} more people`}
+                  >
+                    +{sortedMembers.length - MAX_AVATARS}
+                  </Link>
+                )}
+              </div>
+            </TooltipProvider>
           </div>
         )}
 
-        {/* Recent Conversations */}
-        {isConnected && recentConversations.length > 0 ? (
-          <div className="space-y-2">
-            {recentConversations.map((room) => (
-              <div
-                key={room.id}
-                className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex-shrink-0">
-                  {room.type === "direct" && room.otherUser ? (
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={room.otherUser.profilePicture} alt={room.otherUser.name} />
-                      <AvatarFallback className="text-xs">
-                        {getUserInitials(room.otherUser.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                      <MessageCircle className="w-4 h-4 text-primary" />
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium truncate">
-                      {room.type === "workspace" ? `#${room.name}` : room.name}
-                    </p>
-                    {room.unreadCount > 0 && (
-                      <Badge variant="default" className="text-xs h-4 min-w-4">
-                        {room.unreadCount > 9 ? "9+" : room.unreadCount}
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  {room.lastMessage && (
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground truncate">
-                        {room.lastMessage.sender.name}: {room.lastMessage.content}
+        {recent.length > 0 ? (
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Recent conversations</p>
+            {recent.map((conversation) => {
+              const last = conversation.lastMessage!;
+              const who =
+                last.sender?._id === myId ? "You: " : conversation.type !== "direct" && last.sender ? `${last.sender.name.split(" ")[0]}: ` : "";
+              const unread = conversation.unreadCount > 0;
+              return (
+                <Link
+                  key={conversation.id}
+                  to={`${chatUrl}?room=${encodeURIComponent(conversation.id)}`}
+                  className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-muted/60"
+                >
+                  <ConversationAvatar conversation={conversation} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className={cn("truncate text-sm", unread ? "font-semibold" : "font-medium")}>
+                        {conversationTitle(conversation)}
                       </p>
-                      <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
-                        {formatLastMessageTime(room.lastMessage.createdAt)}
-                      </span>
+                      <span className="shrink-0 text-[11px] text-muted-foreground">{formatListTime(last.createdAt)}</span>
                     </div>
-                  )}
-                </div>
-              </div>
-            ))}
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={cn("truncate text-xs", unread ? "text-foreground" : "text-muted-foreground")}>
+                        {who}
+                        {messagePreview(last)}
+                      </p>
+                      {unread && (
+                        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-2 px-1 text-[10px] font-semibold text-primary-foreground">
+                          {conversation.unreadCount}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
-        ) : isConnected ? (
-          <div className="text-center py-4 text-muted-foreground">
-            <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No recent conversations</p>
-            <p className="text-xs">Start chatting with your team!</p>
-          </div>
-        ) : null}
+        ) : (
+          isConnected && (
+            <div className="py-2 text-center text-muted-foreground">
+              <p className="text-sm">No conversations yet</p>
+              <p className="text-xs">Click someone above to send them a message.</p>
+            </div>
+          )
+        )}
 
-        {/* Open Chat Button */}
-        <div className="pt-2 border-t">
-          <Button
-            asChild
-            variant="outline"
-            className="w-full justify-between"
-          >
-            <Link to={`/workspace/${workspaceId}/chat`}>
-              <span>Open Full Chat</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </Button>
-        </div>
+        <Button asChild variant="outline" className="w-full justify-between">
+          <Link to={chatUrl}>
+            Open chat
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </Button>
       </CardContent>
     </Card>
   );

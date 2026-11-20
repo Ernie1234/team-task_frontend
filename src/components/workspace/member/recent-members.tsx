@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import PresenceDot from "@/components/presence/presence-dot";
 import useGetWorkspaceMembers from "@/hooks/api/use-get-workspace-members";
 import useWorkspaceId from "@/hooks/use-workspace-id";
 import { getAvatarColor, getAvatarFallbackText } from "@/lib/helper";
@@ -33,7 +34,7 @@ const RecentMembers = () => {
               className="flex items-center gap-4 p-3 rounded-lg border hover:bg-muted"
             >
               {/* Avatar */}
-              <div className="flex-shrink-0">
+              <div className="relative flex-shrink-0">
                 <Avatar className="h-9 w-9 sm:flex">
                   <AvatarImage
                     src={member.userId.profilePicture || ""}
@@ -43,6 +44,7 @@ const RecentMembers = () => {
                     {initials}
                   </AvatarFallback>
                 </Avatar>
+                <PresenceDot userId={member.userId?._id} />
               </div>
 
               {/* Member Details */}

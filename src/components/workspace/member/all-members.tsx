@@ -1,6 +1,7 @@
 import { ChevronDown, Loader } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import PresenceDot from "@/components/presence/presence-dot";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -86,15 +87,18 @@ const AllMembers = () => {
             className="flex items-center justify-between space-x-4"
           >
             <div className="flex items-center space-x-4">
-              <Avatar className="h-8 w-8">
-                <AvatarImage
-                  src={member.userId?.profilePicture || ""}
-                  alt="Image"
-                />
-                <AvatarFallback className={avatarColor}>
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage
+                    src={member.userId?.profilePicture || ""}
+                    alt="Image"
+                  />
+                  <AvatarFallback className={avatarColor}>
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <PresenceDot userId={member.userId?._id} />
+              </div>
               <div>
                 <p className="text-sm font-medium leading-none">{name}</p>
                 <p className="text-sm text-muted-foreground">

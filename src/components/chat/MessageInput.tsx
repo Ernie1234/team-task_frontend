@@ -1,358 +1,411 @@
-import React, { useState, useRef, useEffect } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+import Picker from "@emoji-mart/react";
+import data from "@emoji-mart/data";
+import { FileText, Loader2, Paperclip, Pencil, Reply, SendHorizontal, Smile, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { 
-  Send, 
-  Smile, 
-  Paperclip
-} from "lucide-react";
-import { ChatRoom } from "@/hooks/use-chat-store";
-import socketService from "@/lib/socket";
-import useAuth from "@/hooks/api/use-auth";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import socketService, { type Message } from "@/lib/socket";
 import useChatStore from "@/hooks/use-chat-store";
-import { 
-  sendWorkspaceMessageMutationFn, 
-  sendProjectMessageMutationFn, 
-  sendDirectMessageMutationFn 
-} from "@/lib/api";
+import { sendDraft, type Draft } from "@/lib/chat-send";
+import {
+  ACCEPTED_FILE_TYPES,
+  MAX_FILES,
+  fileProblem,
+  formatBytes,
+  messagePreview,
+} from "@/lib/chat-files";
+import { useResolvedMode } from "@/hooks/use-appearance";
+import type { Conversation } from "@/types/chat.type";
 
-interface MessageInputProps {
-  room: ChatRoom;
-  disabled?: boolean;
+export interface MessageInputHandle {
+  addFiles: (files: FileList | File[]) => void;
+  focus: () => void;
 }
 
-// Common emojis for quick access
-const QUICK_EMOJIS = [
-  "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣",
-  "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰",
-  "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜",
-  "🤪", "🤨", "🧐", "🤓", "😎", "🤩", "🥳", "😏",
-  "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣",
-  "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠",
-  "👍", "👎", "👌", "✌️", "🤞", "🤟", "🤘", "🤙",
-  "👏", "🙌", "👐", "🤝", "🙏", "💪", "🎉", "🎊"
-];
+interface MessageInputProps {
+  conversation: Conversation;
+  myId?: string;
+  me?: Draft["me"];
+  replyTo: Message | null;
+  editing: Message | null;
+  onCancelReply: () => void;
+  onCancelEdit: () => void;
+  onSent: () => void;
+}
 
-const MessageInput: React.FC<MessageInputProps> = ({ room, disabled = false }) => {
-  const { data: user } = useAuth();
-  const [message, setMessage] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
-  const { sendingMessage, setSendingMessage, addMessage } = useChatStore();
+type PendingFile = { id: string; file: File; previewUrl?: string };
 
-  // Auto-resize textarea
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, [message]);
+const TYPING_IDLE_MS = 2500;
 
-  // Handle typing indicators
-  useEffect(() => {
-    const handleTypingStart = () => {
-      if (!isTyping && message.trim()) {
-        setIsTyping(true);
-        socketService.startTyping(room.type, {
-          workspace: room.workspace,
-          project: room.project,
-          otherUserId: room.otherUser?._id,
-        });
-      }
+const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
+  ({ conversation, myId, me, replyTo, editing, onCancelReply, onCancelEdit, onSent }, ref) => {
+    const [text, setText] = useState("");
+    const [files, setFiles] = useState<PendingFile[]>([]);
+    const [sending, setSending] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [emojiOpen, setEmojiOpen] = useState(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const typingRef = useRef(false);
+    const typingTimer = useRef<ReturnType<typeof setTimeout>>();
+    const isConnected = useChatStore((s) => s.isConnected);
+    const theme = useResolvedMode();
 
-      // Clear existing timeout
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-
-      // Set new timeout to stop typing
-      typingTimeoutRef.current = setTimeout(() => {
-        if (isTyping) {
-          setIsTyping(false);
-          socketService.stopTyping(room.type, {
-            workspace: room.workspace,
-            project: room.project,
-            otherUserId: room.otherUser?._id,
-          });
-        }
-      }, 2000); // Stop typing after 2 seconds of inactivity
+    const target = {
+      workspace: conversation.workspace,
+      project: conversation.project,
+      otherUserId: conversation.otherUser?._id,
     };
 
-    if (message.trim()) {
-      handleTypingStart();
-    }
+    const resize = useCallback(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    }, []);
 
-    return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-    };
-  }, [message, isTyping, room.type, room.workspace, room.project, room.otherUser?._id]);
+    useEffect(resize, [text, resize]);
 
-  // Stop typing when component unmounts or message is sent
-  useEffect(() => {
-    return () => {
-      if (isTyping) {
-        socketService.stopTyping(room.type, {
-          workspace: room.workspace,
-          project: room.project,
-          otherUserId: room.otherUser?._id,
-        });
-      }
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-    };
-  }, [isTyping, room]);
-
-  const handleSendMessage = async () => {
-    const trimmedMessage = message.trim();
-    if (!trimmedMessage || sendingMessage || disabled) return;
-
-    setSendingMessage(true);
-    setMessage("");
-    
-    // Stop typing indicator
-    if (isTyping) {
-      setIsTyping(false);
-      socketService.stopTyping(room.type, {
-        workspace: room.workspace,
-        project: room.project,
-        otherUserId: room.otherUser?._id,
+    // Switching conversation: start fresh
+    useEffect(() => {
+      setText("");
+      setError(null);
+      setFiles((current) => {
+        current.forEach((f) => f.previewUrl && URL.revokeObjectURL(f.previewUrl));
+        return [];
       });
-    }
+      textareaRef.current?.focus();
+    }, [conversation.id]);
 
-    try {
-      // Try socket first if connected
-      if (socketService.isConnected()) {
-        try {
-          await socketService.sendMessage(room.type, {
-            content: trimmedMessage,
-            workspace: room.workspace,
-            project: room.project,
-            otherUserId: room.otherUser?._id,
-          });
-          return; // Success via socket
-        } catch (socketError) {
-          console.warn("Socket send failed, falling back to REST API:", socketError);
+    // Editing puts the message text in the box
+    useEffect(() => {
+      if (editing) {
+        setText(editing.content);
+        setError(null);
+        requestAnimationFrame(() => {
+          const el = textareaRef.current;
+          el?.focus();
+          el?.setSelectionRange(el.value.length, el.value.length);
+        });
+      }
+    }, [editing]);
+
+    useEffect(() => {
+      if (replyTo) textareaRef.current?.focus();
+    }, [replyTo]);
+
+    const stopTyping = useCallback(() => {
+      clearTimeout(typingTimer.current);
+      if (typingRef.current) {
+        typingRef.current = false;
+        socketService.stopTyping(conversation.type, target);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [conversation.id]);
+
+    useEffect(() => stopTyping, [stopTyping]);
+
+    const addFiles = useCallback((incoming: FileList | File[]) => {
+      const list = Array.from(incoming);
+      if (list.length === 0) return;
+      const problems: string[] = [];
+      setFiles((current) => {
+        const room = MAX_FILES - current.length;
+        const accepted: PendingFile[] = [];
+        for (const file of list) {
+          const problem = fileProblem(file);
+          if (problem) problems.push(problem);
+          else if (accepted.length >= room) problems.push(`You can send up to ${MAX_FILES} files at a time.`);
+          else
+            accepted.push({
+              id: `${file.name}-${file.size}-${Math.random()}`,
+              file,
+              previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+            });
         }
+        return [...current, ...accepted];
+      });
+      setError(problems.length ? [...new Set(problems)].join(" ") : null);
+      textareaRef.current?.focus();
+    }, []);
+
+    useImperativeHandle(ref, () => ({ addFiles, focus: () => textareaRef.current?.focus() }), [addFiles]);
+
+    const removeFile = (id: string) =>
+      setFiles((current) => {
+        const file = current.find((f) => f.id === id);
+        if (file?.previewUrl) URL.revokeObjectURL(file.previewUrl);
+        return current.filter((f) => f.id !== id);
+      });
+
+    const handleChange = (value: string) => {
+      setText(value);
+      if (editing) return;
+      if (!typingRef.current && value.trim()) {
+        typingRef.current = true;
+        socketService.startTyping(conversation.type, target);
+      }
+      clearTimeout(typingTimer.current);
+      typingTimer.current = setTimeout(stopTyping, TYPING_IDLE_MS);
+    };
+
+    const insertEmoji = (emoji: string) => {
+      const el = textareaRef.current;
+      const start = el?.selectionStart ?? text.length;
+      const end = el?.selectionEnd ?? text.length;
+      const next = text.slice(0, start) + emoji + text.slice(end);
+      setText(next);
+      requestAnimationFrame(() => {
+        el?.focus();
+        el?.setSelectionRange(start + emoji.length, start + emoji.length);
+      });
+    };
+
+    const saveEdit = async () => {
+      if (!editing) return;
+      const content = text.trim();
+      if (content === editing.content.trim()) return onCancelEdit();
+      if (!content && !(editing.attachments?.length)) {
+        setError("A message can't be empty. Delete it instead.");
+        return;
+      }
+      setSending(true);
+      try {
+        await socketService.editMessage(editing._id, content);
+        setText("");
+        onCancelEdit();
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setSending(false);
+      }
+    };
+
+    const send = async () => {
+      if (sending) return;
+      if (editing) return saveEdit();
+
+      const content = text.trim();
+      if (!content && files.length === 0) return;
+      if (!me) {
+        setError("Still loading your account. Try again in a moment.");
+        return;
+      }
+      if (content.length > 2000) {
+        setError("Messages can be up to 2,000 characters.");
+        return;
       }
 
-      // Fallback to REST API
-      console.log('Sending message via REST API');
-      let response;
-      switch (room.type) {
-        case "workspace":
-          if (room.workspace) {
-            response = await sendWorkspaceMessageMutationFn({
-              workspaceId: room.workspace,
-              content: trimmedMessage,
-            });
-          }
-          break;
-          
-        case "project":
-          if (room.project) {
-            response = await sendProjectMessageMutationFn({
-              projectId: room.project,
-              content: trimmedMessage,
-            });
-          }
-          break;
-          
-        case "direct":
-          if (room.otherUser?._id) {
-            response = await sendDirectMessageMutationFn({
-              otherUserId: room.otherUser._id,
-              content: trimmedMessage,
-            });
-          }
-          break;
+      setError(null);
+      stopTyping();
+
+      // Shows up immediately; the upload and server confirmation happen in the background
+      sendDraft({
+        conversation,
+        content,
+        replyTo,
+        files: files.map((f) => f.file),
+        me,
+      });
+
+      files.forEach((f) => f.previewUrl && URL.revokeObjectURL(f.previewUrl));
+      setFiles([]);
+      setText("");
+      onCancelReply();
+      onSent();
+      textareaRef.current?.focus();
+    };
+
+    const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+        e.preventDefault();
+        send();
+      } else if (e.key === "Escape") {
+        if (editing) {
+          setText("");
+          onCancelEdit();
+        } else if (replyTo) onCancelReply();
       }
-      
-      // Manually add message to store since REST API won't trigger socket event
-      if (response?.data) {
-        addMessage(room.id, response.data);
+    };
+
+    const onPaste = (e: React.ClipboardEvent) => {
+      if (editing) return;
+      const pasted = Array.from(e.clipboardData.files);
+      if (pasted.length) {
+        e.preventDefault();
+        addFiles(pasted);
       }
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      // Restore message on error
-      setMessage(trimmedMessage);
-    } finally {
-      setSendingMessage(false);
-    }
-  };
+    };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
+    const canSend = !sending && (text.trim().length > 0 || files.length > 0 || !!editing);
+    const placeholder =
+      conversation.type === "direct"
+        ? `Message ${conversation.otherUser?.name.split(" ")[0] ?? ""}`
+        : conversation.type === "workspace"
+          ? "Message #general"
+          : `Message ${conversation.name}`;
 
-  const handleEmojiSelect = (emoji: string) => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const newMessage = message.substring(0, start) + emoji + message.substring(end);
-      setMessage(newMessage);
-      
-      // Set cursor position after emoji
-      setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
-        textarea.focus();
-      }, 0);
-    } else {
-      setMessage(prev => prev + emoji);
-    }
-    setShowEmojiPicker(false);
-  };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      // TODO: Implement file upload functionality
-      console.log("Files selected:", files);
-      // For now, just show the file name
-      const fileNames = Array.from(files).map(file => file.name).join(", ");
-      setMessage(prev => prev + `📎 ${fileNames} `);
-    }
-  };
-
-  if (!user) {
     return (
-      <div className="text-center py-4">
-        <p className="text-sm text-muted-foreground">Please log in to send messages</p>
-      </div>
-    );
-  }
+      <div className="bg-gradient-to-t from-background via-background to-background/0 px-3 pb-3 pt-2 sm:px-6">
+        {(replyTo || editing) && (
+          <div className="mx-auto mb-2 flex max-w-4xl items-start gap-2 rounded-2xl border-l-2 border-primary bg-muted/60 px-3 py-2 text-xs">
+            {editing ? <Pencil className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" /> : <Reply className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />}
+            <div className="min-w-0 flex-1">
+              <p className="font-medium">
+                {editing
+                  ? "Editing message"
+                  : `Replying to ${replyTo!.sender?._id === myId ? "yourself" : replyTo!.sender?.name ?? "message"}`}
+              </p>
+              {!editing && <p className="truncate text-muted-foreground">{messagePreview(replyTo!)}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (editing) {
+                  setText("");
+                  onCancelEdit();
+                } else onCancelReply();
+              }}
+              className="rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+              aria-label={editing ? "Cancel editing" : "Cancel reply"}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
-  return (
-    <div className="space-y-2">
-      <div className="flex items-end space-x-2">
-        {/* Message input */}
-        <div className="flex-1 relative">
-          <Textarea
-            ref={textareaRef}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyPress}
-            placeholder={`Message ${room.name}...`}
-            disabled={disabled || sendingMessage}
-            className="min-h-[40px] max-h-32 resize-none pr-20"
-            rows={1}
-          />
-          
-          {/* Input actions */}
-          <div className="absolute right-2 bottom-2 flex items-center space-x-1">
-            {/* File upload */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() => document.getElementById('file-upload')?.click()}
+        {files.length > 0 && (
+          <div className="mx-auto mb-2 flex max-w-4xl gap-2 overflow-x-auto pb-1" aria-label="Files to send">
+            {files.map((f) => (
+              <div key={f.id} className="relative shrink-0">
+                {f.previewUrl ? (
+                  <img src={f.previewUrl} alt={f.file.name} className="h-16 w-16 rounded-xl object-cover" />
+                ) : (
+                  <div className="flex h-16 w-44 items-center gap-2 rounded-xl bg-muted px-2.5">
+                    <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-medium">{f.file.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{formatBytes(f.file.size)}</p>
+                    </div>
+                  </div>
+                )}
+                {!sending && (
+                  <button
+                    type="button"
+                    onClick={() => removeFile(f.id)}
+                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border bg-background shadow-sm hover:bg-muted"
+                    aria-label={`Remove ${f.file.name}`}
                   >
-                    <Paperclip className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Attach file</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
-            {/* Emoji picker */}
-            <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+        {error && (
+          <p role="alert" className="mx-auto mb-2 max-w-4xl px-1 text-xs text-destructive">
+            {error}
+          </p>
+        )}
+
+        <div className="mx-auto flex max-w-4xl items-end gap-1">
+          {!editing && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                hidden
+                accept={ACCEPTED_FILE_TYPES.join(",")}
+                onChange={(e) => {
+                  if (e.target.files) addFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="mb-1 h-9 w-9 shrink-0 rounded-full text-primary hover:bg-primary/10 hover:text-primary"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={sending || files.length >= MAX_FILES}
+                aria-label="Attach files"
+                title="Attach photos or files (up to 10 MB each)"
+              >
+                <Paperclip className="h-5 w-5" />
+              </Button>
+            </>
+          )}
+
+          <div className="flex min-h-11 flex-1 items-end rounded-3xl border bg-muted/60 pl-4 pr-1.5 shadow-sm transition-colors focus-within:border-primary/50 focus-within:bg-muted">
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={text}
+              onChange={(e) => handleChange(e.target.value)}
+              onKeyDown={onKeyDown}
+              onPaste={onPaste}
+              placeholder={placeholder}
+              aria-label={placeholder}
+              className="max-h-40 flex-1 resize-none bg-transparent py-3 text-[15px] leading-5 outline-none placeholder:text-muted-foreground"
+            />
+            <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
               <PopoverTrigger asChild>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                      >
-                        <Smile className="w-4 h-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Add emoji</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="mb-1.5 h-8 w-8 shrink-0 rounded-full text-muted-foreground"
+                  aria-label="Add emoji"
+                >
+                  <Smile className="h-5 w-5" />
+                </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80" align="end">
-                <div className="grid grid-cols-8 gap-2 p-2">
-                  {QUICK_EMOJIS.map((emoji, index) => (
-                    <Button
-                      key={index}
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-lg hover:bg-muted"
-                      onClick={() => handleEmojiSelect(emoji)}
-                    >
-                      {emoji}
-                    </Button>
-                  ))}
-                </div>
+              <PopoverContent side="top" align="end" className="w-auto border-0 p-0 shadow-xl">
+                <Picker
+                  data={data}
+                  theme={theme === "dark" ? "dark" : "light"}
+                  previewPosition="none"
+                  skinTonePosition="none"
+                  onEmojiSelect={(emoji: { native: string }) => insertEmoji(emoji.native)}
+                />
               </PopoverContent>
             </Popover>
           </div>
 
-          {/* Hidden file input */}
-          <input
-            id="file-upload"
-            type="file"
-            multiple
-            accept="image/*,video/*,.pdf,.doc,.docx,.txt"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
+          <Button
+            type="button"
+            size="icon"
+            onClick={send}
+            disabled={!canSend}
+            className="mb-1 h-9 w-9 shrink-0 rounded-full bg-gradient-to-br from-primary to-primary-2 text-primary-foreground shadow-sm hover:brightness-110 disabled:bg-none disabled:bg-transparent disabled:text-muted-foreground disabled:shadow-none"
+            aria-label={editing ? "Save edit" : "Send message"}
+          >
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-5 w-5" />}
+          </Button>
         </div>
 
-        {/* Send button */}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={handleSendMessage}
-                disabled={!message.trim() || sendingMessage || disabled}
-                size="sm"
-                className="h-10 w-10 p-0 flex-shrink-0"
-              >
-                {sendingMessage ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Send message (Enter)
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <p className={cn("mx-auto mt-1.5 max-w-4xl px-1 text-[11px] text-muted-foreground", isConnected && "sr-only sm:not-sr-only")}>
+          {!isConnected
+            ? "Reconnecting… messages will still be sent."
+            : editing
+              ? "Enter to save · Esc to cancel"
+              : "Enter to send · Shift + Enter for a new line"}
+        </p>
       </div>
+    );
+  }
+);
 
-      {/* Helper text */}
-      <p className="text-xs text-muted-foreground">
-        Press Enter to send, Shift + Enter for new line
-      </p>
-    </div>
-  );
-};
-
+MessageInput.displayName = "MessageInput";
 export default MessageInput;

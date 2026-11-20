@@ -6,7 +6,10 @@ const useAuth = () => {
     queryKey: ["authUser"],
     queryFn: getCurrentUserQueryFn,
     staleTime: 0,
-    retry: 2,
+    // A 401 just means "not signed in"; retrying only spams the server
+    retry: (failureCount, error) =>
+      (error as { response?: { status?: number } })?.response?.status !== 401 &&
+      failureCount < 2,
   });
   return query;
 };

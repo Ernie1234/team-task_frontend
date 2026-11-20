@@ -1,3 +1,4 @@
+import { SectionCard } from "@/components/shared/page-header";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -80,16 +81,8 @@ export default function EditWorkspaceForm() {
   };
 
   return (
-    <div className="w-full h-auto max-w-full">
-      <div className="h-full">
-        <div className="mb-5 border-b">
-          <h1
-            className="text-[17px] tracking-[-0.16px] dark:text-[#fcfdffef] font-semibold mb-1.5
-           text-center sm:text-left"
-          >
-            Edit Workspace
-          </h1>
-        </div>
+    <SectionCard title="Workspace details" description="The name and description everyone in the workspace sees.">
+      <div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <div className="mb-4">
@@ -98,13 +91,13 @@ export default function EditWorkspaceForm() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="dark:text-[#f1f7feb5] text-sm">
+                    <FormLabel className="text-sm">
                       Workspace name
                     </FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Taco's Co."
-                        className="!h-[48px] disabled:opacity-90 disabled:pointer-events-none"
+                        className="h-10 disabled:opacity-90 disabled:pointer-events-none"
                         disabled={!canEditWorkspace}
                         {...field}
                       />
@@ -120,15 +113,15 @@ export default function EditWorkspaceForm() {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="dark:text-[#f1f7feb5] text-sm">
+                    <FormLabel className="text-sm">
                       Workspace description
-                      <span className="text-xs font-extralight ml-2">
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
                         Optional
                       </span>
                     </FormLabel>
                     <FormControl>
                       <Textarea
-                        rows={6}
+                        rows={4}
                         disabled={!canEditWorkspace}
                         className="disabled:opacity-90 disabled:pointer-events-none"
                         placeholder="Our team organizes marketing projects and tasks here."
@@ -142,17 +135,17 @@ export default function EditWorkspaceForm() {
             </div>
             {canEditWorkspace && (
               <Button
-                className="flex place-self-end  h-[40px] orange:bg-red-600 font-semibold"
+                className="ml-auto flex h-9 gap-1.5"
                 disabled={isPending}
                 type="submit"
               >
-                {isPending && <Loader className="animate-spin" />}
-                Update Workspace
+                {isPending && <Loader className="h-4 w-4 animate-spin" />}
+                Save changes
               </Button>
             )}
           </form>
         </Form>
       </div>
-    </div>
+    </SectionCard>
   );
 }

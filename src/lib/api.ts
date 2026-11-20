@@ -1,4 +1,7 @@
 import API from "./axios-client";
+import type { Appearance } from "./appearance";
+import type { CalendarConnectionType, CalendarEventType, EventPayloadType, NoteSummaryType, NoteType, NoteVisibility, UpdateNotePayloadType } from "@/types/api.type";
+import { baseURL } from "./base-url";
 import {
   AllMembersInWorkspaceResponseType,
   AllProjectPayloadType,
@@ -16,6 +19,9 @@ import {
   ProjectResponseType,
   RecentActivitiesByWorkspaceIdPayloadType,
   RecentActivitiesByWorkspaceIdResponseType,
+  WorkspaceNotificationsResponseType,
+  TaskDetailResponseType,
+  DashboardType,
 } from "../types/api.type";
 import {
   AllWorkspaceResponseType,
@@ -27,6 +33,23 @@ import {
   WorkspaceByIdResponseType,
   EditWorkspaceType,
 } from "@/types/api.type";
+import type { Message, OnlineUser } from "./socket";
+import type { Conversation, SharedAttachment, UploadedAttachment } from "@/types/chat.type";
+
+//******** */ CHAT TYPES ****************
+// ******************************************
+
+export type ChatMemberType = Omit<OnlineUser, "role"> & {
+  role: { name: string; permissions?: string[] };
+  joinedAt?: string;
+};
+
+export type DirectConversationType = {
+  conversationId: OnlineUser[];
+  otherUser?: OnlineUser;
+  lastMessage: Message;
+  unreadCount: number;
+};
 
 export const loginMutationFn = async (
   data: loginType
@@ -47,6 +70,11 @@ export const verifyEmailMutationFn = async ({
 }) => await API.post("/auth/verify-email", { email, token });
 
 export const logoutMutationFn = async () => await API.post("/auth/logout");
+
+export const saveAppearanceMutationFn = async (appearance: Appearance) => {
+  const response = await API.put(`/user/appearance`, appearance);
+  return response.data as { appearance: Appearance };
+};
 
 export const getCurrentUserQueryFn =
   async (): Promise<CurrentUserResponseType> => {
@@ -217,8 +245,12 @@ export const deleteProjectMutationFn = async ({
 //************************* */
 export const getwWorkspaceRecentActivitesQueryFn = async ({
   workspaceId,
+  page = 1,
+  limit = 10,
 }: RecentActivitiesByWorkspaceIdPayloadType): Promise<RecentActivitiesByWorkspaceIdResponseType> => {
-  const response = await API.get(`/activities/workspace/${workspaceId}`);
+  const response = await API.get(`/activities/workspace/${workspaceId}`, {
+    params: { page, limit },
+  });
   return response.data;
 };
 
@@ -260,8 +292,11 @@ export const getAllTasksQueryFn = async ({
   dueDate,
   pageNumber,
   pageSize,
+  parentTask,
+  sortBy,
+  sortOrder,
 }: AllTaskPayloadType): Promise<AllTaskResponseType> => {
-  const baseUrl = `/tasks/workspace/${workspaceId}/projects/${projectId}/tasks`;
+  const baseUrl = `/tasks/workspace/${workspaceId}/projects/${projectId || "all"}/tasks`;
 
   const queryParams = new URLSearchParams();
   if (keyword) queryParams.append("keyword", keyword);
@@ -272,11 +307,32 @@ export const getAllTasksQueryFn = async ({
   if (dueDate) queryParams.append("dueDate", dueDate);
   if (pageNumber) queryParams.append("pageNumber", pageNumber?.toString());
   if (pageSize) queryParams.append("pageSize", pageSize?.toString());
+  if (parentTask) queryParams.append("parentTask", parentTask);
+  if (sortBy) queryParams.append("sortBy", sortBy);
+  if (sortOrder) queryParams.append("sortOrder", sortOrder);
 
   const url = queryParams.toString() ? `${baseUrl}?${queryParams}` : baseUrl;
   const response = await API.get(url);
+  return response.data;
+};
 
-  console.log("here again: ", response.data);
+export const getWorkspaceDashboardQueryFn = async (
+  workspaceId: string
+): Promise<{ dashboard: DashboardType }> => {
+  const response = await API.get(`/workspace/dashboard/${workspaceId}`);
+  return response.data;
+};
+
+export const getTaskByIdQueryFn = async ({
+  workspaceId,
+  projectId,
+  taskId,
+}: {
+  workspaceId: string;
+  projectId: string;
+  taskId: string;
+}): Promise<TaskDetailResponseType> => {
+  const response = await API.get(`/tasks/workspace/${workspaceId}/projects/${projectId}/tasks/${taskId}`);
   return response.data;
 };
 
@@ -300,22 +356,28 @@ export const deleteTaskMutationFn = async ({
 //*******NOTIFICATIONS ********************************
 //************************* */
 
+export const getWorkspaceNotificationsQueryFn = async (
+  workspaceId: string
+): Promise<WorkspaceNotificationsResponseType> => {
+  const response = await API.get(`/notifications/workspace/${workspaceId}`);
+  return response.data;
+};
+
 export const markNotificationsAsRead = async (
   notificationIds: string[]
 ): Promise<void> => {
   const response = await API.patch(`/notifications/mark-as-read`, {
     notificationIds,
   });
-  console.log("mark notification as read: ", response.data);
   return response.data;
 };
+
 export const markAllNotificationsAsRead = async (
   workspaceId: string
 ): Promise<void> => {
   const response = await API.patch(
     `/notifications/workspace/${workspaceId}/mark-all-read`
   );
-  console.log("mark all notification as read: ", response.data);
   return response.data;
 };
 
@@ -336,7 +398,7 @@ export const getWorkspaceMessagesQueryFn = async ({
 }): Promise<{
   status: boolean;
   message: string;
-  messages: any[];
+  messages: Message[];
   pagination: { hasMore: boolean; total: number };
 }> => {
   const params = new URLSearchParams();
@@ -365,7 +427,7 @@ export const getProjectMessagesQueryFn = async ({
 }): Promise<{
   status: boolean;
   message: string;
-  messages: any[];
+  messages: Message[];
   pagination: { hasMore: boolean; total: number };
 }> => {
   const params = new URLSearchParams();
@@ -394,7 +456,7 @@ export const getDirectMessagesQueryFn = async ({
 }): Promise<{
   status: boolean;
   message: string;
-  messages: any[];
+  messages: Message[];
   pagination: { hasMore: boolean; total: number };
 }> => {
   const params = new URLSearchParams();
@@ -413,7 +475,7 @@ export const getDirectMessagesQueryFn = async ({
 export const getOnlineUsersQueryFn = async (workspaceId: string): Promise<{
   status: boolean;
   message: string;
-  onlineUsers: any[];
+  onlineUsers: OnlineUser[];
 }> => {
   const response = await API.get(`/chat/workspace/${workspaceId}/online-users`);
   return response.data;
@@ -423,7 +485,7 @@ export const getOnlineUsersQueryFn = async (workspaceId: string): Promise<{
 export const getWorkspaceMembersForChatQueryFn = async (workspaceId: string): Promise<{
   status: boolean;
   message: string;
-  members: any[];
+  members: ChatMemberType[];
 }> => {
   const response = await API.get(`/chat/workspace/${workspaceId}/members`);
   return response.data;
@@ -441,7 +503,7 @@ export const searchWorkspaceMessagesQueryFn = async ({
 }): Promise<{
   status: boolean;
   message: string;
-  messages: any[];
+  messages: Message[];
   query: string;
 }> => {
   const params = new URLSearchParams();
@@ -456,7 +518,7 @@ export const searchWorkspaceMessagesQueryFn = async ({
 export const getDirectConversationsQueryFn = async (): Promise<{
   status: boolean;
   message: string;
-  conversations: any[];
+  conversations: DirectConversationType[];
 }> => {
   const response = await API.get("/chat/direct/conversations");
   return response.data;
@@ -487,6 +549,38 @@ export const getWorkspaceChatStatsQueryFn = async (workspaceId: string): Promise
   return response.data;
 };
 
+// Sidebar: channels + DMs with last message and unread count
+export const getWorkspaceConversationsQueryFn = async (
+  workspaceId: string
+): Promise<{ conversations: Conversation[] }> => {
+  const response = await API.get(`/chat/workspace/${workspaceId}/conversations`);
+  return response.data;
+};
+
+// Photos and files shared in a conversation (newest first)
+export const getRoomAttachmentsQueryFn = async (
+  roomId: string
+): Promise<{ attachments: SharedAttachment[] }> => {
+  const response = await API.get(`/chat/rooms/${encodeURIComponent(roomId)}/attachments`);
+  return response.data;
+};
+
+// Upload chat attachments; send the returned attachments with the message
+export const uploadChatFilesMutationFn = async (
+  files: File[],
+  onProgress?: (percent: number) => void
+): Promise<UploadedAttachment[]> => {
+  const form = new FormData();
+  files.forEach((file) => form.append("files", file));
+  const response = await API.post("/chat/uploads", form, {
+    timeout: 120_000,
+    onUploadProgress: (event) => {
+      if (onProgress && event.total) onProgress(Math.round((event.loaded / event.total) * 100));
+    },
+  });
+  return response.data.attachments;
+};
+
 // Wrapper functions for chat components
 export const getChatMessages = async (
   type: "workspace" | "project" | "direct",
@@ -500,7 +594,7 @@ export const getChatMessages = async (
   }
 ) => {
   switch (type) {
-    case "workspace":
+    case "workspace": {
       if (!params.workspace) throw new Error("Workspace ID is required");
       const workspaceResponse = await getWorkspaceMessagesQueryFn({
         workspaceId: params.workspace,
@@ -512,8 +606,9 @@ export const getChatMessages = async (
         messages: workspaceResponse.messages,
         hasMore: workspaceResponse.pagination.hasMore,
       };
+    }
       
-    case "project":
+    case "project": {
       if (!params.project) throw new Error("Project ID is required");
       const projectResponse = await getProjectMessagesQueryFn({
         projectId: params.project,
@@ -525,8 +620,9 @@ export const getChatMessages = async (
         messages: projectResponse.messages,
         hasMore: projectResponse.pagination.hasMore,
       };
+    }
       
-    case "direct":
+    case "direct": {
       if (!params.otherUserId) throw new Error("Other user ID is required");
       const directResponse = await getDirectMessagesQueryFn({
         otherUserId: params.otherUserId,
@@ -538,6 +634,7 @@ export const getChatMessages = async (
         messages: directResponse.messages,
         hasMore: directResponse.pagination.hasMore,
       };
+    }
       
     default:
       throw new Error(`Invalid chat type: ${type}`);
@@ -554,72 +651,148 @@ export const getWorkspaceMembers = async (workspaceId: string) => {
   return response.members;
 };
 
-// Send message functions
-export const sendWorkspaceMessageMutationFn = async ({
-  workspaceId,
+// Send a chat message over REST (used only when the socket is offline)
+export const sendChatMessageRestFn = async ({
+  chatType,
+  targetId,
   content,
-  messageType,
   replyTo,
+  attachments,
+}: {
+  chatType: "workspace" | "project" | "direct";
+  targetId: string; // workspace, project or other user's id
+  content: string;
+  replyTo?: string;
+  attachments?: UploadedAttachment[];
+}): Promise<Message> => {
+  const response = await API.post(`/chat/${chatType}/${targetId}/messages`, {
+    content,
+    replyTo,
+    attachments,
+  });
+  return response.data.data;
+};
+
+//******* NOTES ********************************
+
+export const getNotesQueryFn = async (workspaceId: string): Promise<{ notes: NoteSummaryType[] }> => {
+  const response = await API.get(`/notes/workspace/${workspaceId}`);
+  return response.data;
+};
+
+export const getNoteQueryFn = async (workspaceId: string, noteId: string): Promise<{ note: NoteType }> => {
+  const response = await API.get(`/notes/workspace/${workspaceId}/${noteId}`);
+  return response.data;
+};
+
+export const createNoteMutationFn = async ({
+  workspaceId,
+  data,
 }: {
   workspaceId: string;
-  content: string;
-  messageType?: "text" | "image" | "file" | "system";
-  replyTo?: string;
-}): Promise<{
-  status: boolean;
-  message: string;
-  data: any;
-}> => {
-  const response = await API.post(`/chat/workspace/${workspaceId}/messages`, {
-    content,
-    messageType,
-    replyTo,
-  });
+  data: { title?: string; emoji?: string | null; parentNote?: string | null; visibility?: NoteVisibility; content?: Record<string, unknown>[] };
+}): Promise<{ note: NoteType }> => {
+  const response = await API.post(`/notes/workspace/${workspaceId}`, data);
   return response.data;
 };
 
-export const sendProjectMessageMutationFn = async ({
-  projectId,
-  content,
-  messageType,
-  replyTo,
+export const updateNoteMutationFn = async ({
+  workspaceId,
+  noteId,
+  data,
 }: {
-  projectId: string;
-  content: string;
-  messageType?: "text" | "image" | "file" | "system";
-  replyTo?: string;
-}): Promise<{
-  status: boolean;
-  message: string;
-  data: any;
-}> => {
-  const response = await API.post(`/chat/project/${projectId}/messages`, {
-    content,
-    messageType,
-    replyTo,
-  });
+  workspaceId: string;
+  noteId: string;
+  data: UpdateNotePayloadType;
+}): Promise<{ note: NoteType }> => {
+  const response = await API.patch(`/notes/workspace/${workspaceId}/${noteId}`, data, { timeout: 60_000 });
   return response.data;
 };
 
-export const sendDirectMessageMutationFn = async ({
-  otherUserId,
-  content,
-  messageType,
-  replyTo,
-}: {
-  otherUserId: string;
-  content: string;
-  messageType?: "text" | "image" | "file" | "system";
-  replyTo?: string;
-}): Promise<{
-  status: boolean;
-  message: string;
-  data: any;
-}> => {
-  const response = await API.post(`/chat/direct/${otherUserId}/messages`, {
-    content,
-    messageType,
-    replyTo,
-  });
+export const deleteNoteMutationFn = async ({ workspaceId, noteId }: { workspaceId: string; noteId: string }): Promise<{ deletedIds: string[] }> => {
+  const response = await API.delete(`/notes/workspace/${workspaceId}/${noteId}`);
   return response.data;
 };
+
+//******* CALENDAR ********************************
+
+/** Full-page navigation to Google's consent screen (the API redirects back to the Calendar page) */
+export const calendarConnectUrl = (workspaceId: string) =>
+  `${baseURL}/calendar/google/connect?workspaceId=${encodeURIComponent(workspaceId)}`;
+
+export const getCalendarConnectionQueryFn = async (): Promise<{ connection: CalendarConnectionType }> => {
+  const response = await API.get(`/calendar/connection`);
+  return response.data;
+};
+
+export const syncCalendarMutationFn = async (): Promise<{ imported: number; updated: number; removed: number; connection: CalendarConnectionType }> => {
+  const response = await API.post(`/calendar/google/sync`, {}, { timeout: 60_000 });
+  return response.data;
+};
+
+export const disconnectCalendarMutationFn = async () => {
+  const response = await API.delete(`/calendar/google`);
+  return response.data;
+};
+
+export const getEventsQueryFn = async (from: Date, to: Date): Promise<{ events: CalendarEventType[] }> => {
+  const response = await API.get(`/calendar/events`, { params: { from: from.toISOString(), to: to.toISOString() } });
+  return response.data;
+};
+
+export const getEventQueryFn = async (eventId: string): Promise<{ event: CalendarEventType }> => {
+  const response = await API.get(`/calendar/events/${eventId}`);
+  return response.data;
+};
+
+export const createEventMutationFn = async (data: EventPayloadType): Promise<{ event: CalendarEventType }> => {
+  const response = await API.post(`/calendar/events`, data, { timeout: 30_000 });
+  return response.data;
+};
+
+export const updateEventMutationFn = async ({ eventId, data }: { eventId: string; data: Partial<EventPayloadType> }): Promise<{ event: CalendarEventType }> => {
+  const response = await API.patch(`/calendar/events/${eventId}`, data, { timeout: 30_000 });
+  return response.data;
+};
+
+export const deleteEventMutationFn = async (eventId: string) => {
+  const response = await API.delete(`/calendar/events/${eventId}`, { timeout: 30_000 });
+  return response.data;
+};
+
+export const snoozeEventMutationFn = async ({ eventId, minutes }: { eventId: string; minutes: number }) => {
+  const response = await API.post(`/calendar/events/${eventId}/snooze`, { minutes });
+  return response.data;
+};
+
+//******* ACCOUNT ********************************
+
+export type AccountType = {
+  userId: string;
+  name: string;
+  email: string;
+  profilePicture: string | null;
+  hasPassword: boolean;
+  providers: string[];
+  createdAt: string;
+};
+
+export type DeviceSessionType = {
+  _id: string;
+  os: string;
+  browser: string;
+  ip: string;
+  lastActiveAt: string;
+  createdAt: string;
+  current: boolean;
+};
+
+export const getAccountQueryFn = async (): Promise<{ account: AccountType }> => (await API.get(`/user/account`)).data;
+export const updateProfileMutationFn = async (data: { name?: string; profilePicture?: string | null }) =>
+  (await API.patch(`/user/profile`, data)).data;
+export const changePasswordMutationFn = async (data: { currentPassword?: string; newPassword: string }) =>
+  (await API.post(`/user/password`, data)).data;
+export const getSessionsQueryFn = async (): Promise<{ sessions: DeviceSessionType[] }> => (await API.get(`/user/sessions`)).data;
+export const revokeSessionMutationFn = async (sessionId: string) => (await API.delete(`/user/sessions/${sessionId}`)).data;
+export const revokeOtherSessionsMutationFn = async (): Promise<{ count: number; message: string }> => (await API.delete(`/user/sessions`)).data;
+export const deleteAccountMutationFn = async (confirmEmail: string) => (await API.delete(`/user`, { data: { confirmEmail } })).data;
