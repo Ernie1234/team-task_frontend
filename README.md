@@ -85,6 +85,13 @@ Everything below is built and working. Unticked items are on the [roadmap](#road
 
 Ticked off as each item ships.
 
+### Platform and architecture
+- [ ] Monorepo: web app, API and mobile app in one repo (Bun workspaces + Turborepo) with shared types, validation and API client; history from both repos kept
+- [ ] Move from MongoDB to PostgreSQL with Drizzle ORM: foreign keys and transactions, full-text search, pgvector for AI search
+- [ ] Mobile app with React Native (Expo): tasks, chat, notes and push notifications, signed in with Better Auth bearer tokens
+- [ ] Better Auth JWT plugin with a JWKS endpoint, so the Go and Python services can check who's calling without the database
+- [ ] Redis secondary storage for faster session lookups (when running several API instances)
+
 ### Production-grade engineering
 - [ ] Deploy (web on Vercel, API on Fly.io / Render) with a seeded demo account and a "Try the demo" button
 - [x] Persistent sessions in MongoDB with Better Auth (sign-ins survive restarts)
