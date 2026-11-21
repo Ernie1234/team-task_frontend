@@ -28,7 +28,12 @@ API.interceptors.response.use(
       // Our API sends errorCode; Better Auth (/auth/*) sends code
       errorCode: data?.errorCode || data?.code || "UNKNOWN_ERROR",
       message: data?.message || error.message,
+      // Server errors carry a reference that matches the server's log line
+      requestId: error.response?.headers?.["x-request-id"],
     };
+    if (status >= 500 && customError.requestId) {
+      customError.message = `${customError.message} (ref ${String(customError.requestId).slice(0, 8)})`;
+    }
 
     return Promise.reject(customError);
   }

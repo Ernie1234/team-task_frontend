@@ -13,6 +13,7 @@ import useChatSocket from "@/hooks/use-chat-socket";
 import { useTaskSocket } from "@/hooks/api/use-tasks";
 import { useAppearanceSync } from "@/hooks/use-appearance";
 import { useTimeZoneSync } from "@/hooks/api/use-email-prefs";
+import { setErrorReportingUser } from "@/lib/sentry";
 import { useCalendarSocket } from "@/hooks/api/use-calendar";
 
 // Define the context shape
@@ -66,6 +67,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   useAppearanceSync(user?._id, user?.appearance);
   // Daily summary emails arrive in the morning of the user's own time zone
   useTimeZoneSync(user);
+  // Error reports say which account hit them (id only)
+  useEffect(() => setErrorReportingUser(user?._id ?? null), [user?._id]);
   // Calendar reminders (toast + desktop alert) and live calendar updates
   useCalendarSocket(workspace ? workspaceId : undefined);
 

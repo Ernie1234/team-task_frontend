@@ -74,6 +74,11 @@ Everything below is built and working. Unticked items are on the [roadmap](#road
 - [x] Sign in with Google (links to an existing account with the same email)
 - [x] Forgot password: reset with an emailed code, then signed straight in
 
+### Reliability
+- [x] Sentry error tracking (on when `VITE_SENTRY_DSN` is set), linked to the API's traces
+- [x] Crash screen with reload instead of a blank page
+- [x] Server errors show a short reference that matches the API's log line
+
 ---
 
 ## Roadmap
@@ -87,7 +92,7 @@ Ticked off as each item ships.
 - [ ] File uploads on S3 / Cloudflare R2 with signed URLs
 - [ ] CI/CD with GitHub Actions: type-check, lint, unit and end-to-end tests on every pull request, automatic deploys, status badges
 - [ ] End-to-end tests with Playwright (sign up, tasks, chat, notes, calendar)
-- [ ] Observability: Sentry error tracking, structured logs, `/health` endpoint, metrics page
+- [x] Observability: Sentry error tracking, structured logs, `/health` endpoint, metrics page
 - [ ] Security: rate limiting, CSRF protection, passkeys and two-factor sign-in
 
 ### Polyglot services
