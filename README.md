@@ -46,6 +46,7 @@ Everything below is built and working. Unticked items are on the [roadmap](#road
 - [x] To-dos, toggles, quotes, code blocks, tables and images
 - [x] Nested sub-pages, page tree with search, breadcrumbs
 - [x] Private or shared with the workspace; autosave with save status
+- [x] Edit together in real time: live cursors with names, avatars of who's on the page, keeps working offline and merges on reconnect
 - [x] Templates: meeting notes, to-do list, project brief, daily journal
 
 ### Calendar (Notion Calendar-style)
@@ -100,7 +101,7 @@ Ticked off as each item ships.
 
 ### Product depth
 - [x] Guided tour for new accounts: spotlight walkthrough of the app on first sign-in, replay from the account menu
-- [ ] Real-time co-editing in Notes with live cursors (Yjs)
+- [x] Real-time co-editing in Notes with live cursors (Yjs)
 - [ ] Global search and command palette (Ctrl + K) across tasks, notes, messages and people
 - [ ] Email notifications and a daily digest
 - [ ] Activity history / audit log with undo for deletes

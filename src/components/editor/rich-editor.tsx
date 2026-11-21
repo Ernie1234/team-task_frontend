@@ -5,6 +5,7 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import { en } from "@blocknote/core/locales";
 import type { BlockNoteEditor, PartialBlock } from "@blocknote/core";
+import { CollaborationExtension, type CollaborationOptions } from "@blocknote/core/yjs";
 import { cn } from "@/lib/utils";
 import { useResolvedMode } from "@/hooks/use-appearance";
 import { uploadChatFilesMutationFn } from "@/lib/api";
@@ -16,7 +17,8 @@ type RichEditorProps = {
   initialBlocks?: PartialBlock[];
   /** Markdown (task descriptions); ignored when initialBlocks is set */
   initialMarkdown?: string | null;
-  onChange?: (editor: BlockNoteEditor) => void;
+  /** remote = the change came only from other people (live editing) */
+  onChange?: (editor: BlockNoteEditor, info: { remote: boolean }) => void;
   onBlur?: (editor: BlockNoteEditor) => void;
   editable?: boolean;
   placeholder?: string;
@@ -25,6 +27,8 @@ type RichEditorProps = {
   className?: string;
   /** Lets the page put the cursor in the document (e.g. Enter in the title) */
   editorRef?: (editor: BlockNoteEditor | null) => void;
+  /** Live editing: the shared document, the connection (for cursors) and who I am */
+  collaboration?: Pick<CollaborationOptions, "fragment" | "provider" | "user">;
 };
 
 // Images and files dropped or pasted into a document use the same storage as chat attachments
@@ -48,12 +52,15 @@ export default function RichEditor({
   autoFocus,
   className,
   editorRef,
+  collaboration,
 }: RichEditorProps) {
   const mode = useResolvedMode();
   const ready = useRef(false);
 
   const editor = useCreateBlockNote({
-    initialContent: initialBlocks?.length ? initialBlocks : undefined,
+    // With live editing the content comes from the shared document instead
+    initialContent: !collaboration && initialBlocks?.length ? initialBlocks : undefined,
+    extensions: collaboration ? [CollaborationExtension({ ...collaboration, showCursorLabels: "activity" })] : undefined,
     uploadFile,
     dictionary: { ...en, placeholders: { ...en.placeholders, emptyDocument: placeholder, default: compact ? "Type '/' for commands" : placeholder } },
     animations: true,
@@ -61,7 +68,7 @@ export default function RichEditor({
 
   // Markdown is converted after creation (BlockNote's parser runs on the editor)
   useEffect(() => {
-    if (!initialBlocks?.length && initialMarkdown?.trim()) {
+    if (!collaboration && !initialBlocks?.length && initialMarkdown?.trim()) {
       const blocks = editor.tryParseMarkdownToBlocks(initialMarkdown);
       editor.replaceBlocks(editor.document, blocks);
     }
@@ -78,8 +85,11 @@ export default function RichEditor({
       editor={editor}
       editable={editable}
       theme={mode}
-      onChange={() => {
-        if (ready.current) onChange?.(editor);
+      onChange={(_editor, { getChanges }) => {
+        if (!ready.current) return;
+        const changes = getChanges();
+        const remote = changes.length > 0 && changes.every((change) => change.source.type === "yjs-remote");
+        onChange?.(editor, { remote });
       }}
       onBlur={() => onBlur?.(editor)}
       className={cn("tt-editor", compact && "tt-editor-compact", className)}

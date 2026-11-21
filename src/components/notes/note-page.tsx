@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import type { Block, BlockNoteEditor } from "@blocknote/core";
-import { Check, ChevronRight, CloudOff, FileText, Link2, Loader2, Lock, MoreHorizontal, Plus, SmilePlus, Trash2, Users } from "lucide-react";
+import { Check, ChevronRight, CloudOff, FileText, Link2, Loader2, Lock, MoreHorizontal, Plus, SmilePlus, Trash2, Users, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +14,11 @@ import type { NoteType, NoteVisibility, UpdateNotePayloadType } from "@/types/ap
 import { blocksToPlainText } from "@/lib/editor-text";
 import IconPicker from "./icon-picker";
 import { ancestorsOf, noteTitle } from "./note-tree";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAuthContext } from "@/context/auth-provider";
+import { NOTE_FRAGMENT, useNoteCollab, type NotePeer } from "@/hooks/use-note-collab";
+import { cursorColor, type ClosedReason, type CollabStatus } from "@/lib/note-collab";
+import { getAvatarFallbackText } from "@/lib/helper";
 
 const RichEditor = lazy(() => import("@/components/editor/rich-editor"));
 
@@ -86,6 +91,22 @@ function NoteEditorView({
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const isOwner = String(note.createdBy?._id ?? note.createdBy) === currentUserId;
 
+  // Live editing: everyone on this page edits one shared document
+  const { user } = useAuthContext();
+  const collab = useNoteCollab(workspaceId, note._id, note.content);
+  const isLive = !!collab.provider && (collab.status === "ready" || collab.status === "offline");
+  const collaboration = useMemo(
+    () =>
+      collab.provider && user
+        ? {
+            fragment: collab.provider.doc.getXmlFragment(NOTE_FRAGMENT),
+            provider: collab.provider,
+            user: { name: user.name, color: cursorColor(user._id) },
+          }
+        : undefined,
+    [collab.provider, user]
+  );
+
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const editorRef = useRef<BlockNoteEditor | null>(null);
   const pending = useRef<UpdateNotePayloadType>({});
@@ -154,9 +175,12 @@ function NoteEditorView({
   }, [title]);
 
   const onContentChange = useCallback(
-    (editor: BlockNoteEditor) => {
+    (editor: BlockNoteEditor, { remote }: { remote: boolean }) => {
+      // The live document is saved by the server; this keeps the copy used for previews and search
+      // up to date. Only the person who typed sends it.
+      if (remote) return;
       const blocks = editor.document as Block[];
-      queue({ content: blocks as unknown as Record<string, unknown>[], excerpt: blocksToPlainText(blocks) }, 900);
+      queue({ content: blocks as unknown as Record<string, unknown>[], excerpt: blocksToPlainText(blocks), live: true }, 1500);
     },
     [queue]
   );
@@ -208,7 +232,9 @@ function NoteEditorView({
           </span>
         </nav>
 
-        <SaveIndicator state={saveState} onRetry={flush} />
+        <PeerAvatars peers={collab.peers} />
+        <LiveIndicator status={collab.status} />
+        {collab.status !== "offline" && <SaveIndicator state={saveState} onRetry={flush} />}
         <span className="hidden text-xs text-muted-foreground lg:inline">
           Edited {formatDistanceToNow(new Date(lastEdited), { addSuffix: true })}
         </span>
@@ -328,11 +354,19 @@ function NoteEditorView({
 
           <div className="mt-3">
             <Suspense fallback={<div className="space-y-3 px-6 sm:px-[54px]"><Skeleton className="h-4 w-5/6" /><Skeleton className="h-4 w-2/3" /></div>}>
-              <RichEditor
-                initialBlocks={note.content as never}
-                onChange={onContentChange}
-                editorRef={(editor) => (editorRef.current = editor)}
-              />
+              {collab.status === "closed" ? (
+                <ClosedNotice reason={collab.closedReason} workspaceId={workspaceId} />
+              ) : isLive && collaboration ? (
+                <RichEditor
+                  key="live"
+                  collaboration={collaboration}
+                  onChange={onContentChange}
+                  editorRef={(editor) => (editorRef.current = editor)}
+                />
+              ) : (
+                // Saved copy while the live document loads
+                <RichEditor key="preview" initialBlocks={note.content as never} editable={false} />
+              )}
             </Suspense>
           </div>
 
@@ -385,5 +419,71 @@ function SaveIndicator({ state, onRetry }: { state: SaveState; onRetry: () => vo
     <span className="flex items-center gap-1 text-xs text-muted-foreground" aria-live="polite">
       <Check className="h-3 w-3" /> Saved
     </span>
+  );
+}
+
+/** Who else has this page open */
+function PeerAvatars({ peers }: { peers: NotePeer[] }) {
+  if (!peers.length) return null;
+  const shown = peers.slice(0, 4);
+  const label =
+    peers.length === 1 ? `${peers[0].name} is here` : `${peers[0].name} and ${peers.length - 1} other${peers.length > 2 ? "s" : ""} are here`;
+  return (
+    <TooltipProvider delayDuration={200}>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center -space-x-1.5" aria-label={label}>
+          {shown.map((peer) => (
+            <span
+              key={peer.clientId}
+              className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold text-white ring-2 ring-background"
+              style={{ backgroundColor: peer.color }}
+            >
+              {getAvatarFallbackText(peer.name)}
+            </span>
+          ))}
+          {peers.length > shown.length && (
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium ring-2 ring-background">
+              +{peers.length - shown.length}
+            </span>
+          )}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+function LiveIndicator({ status }: { status: CollabStatus }) {
+  if (status === "offline")
+    return (
+      <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400" aria-live="polite">
+        <WifiOff className="h-3.5 w-3.5" /> Offline · your changes will sync
+      </span>
+    );
+  if (status === "connecting" || status === "seeding")
+    return (
+      <span className="flex items-center gap-1 text-xs text-muted-foreground" aria-live="polite">
+        <Loader2 className="h-3 w-3 animate-spin" /> Connecting…
+      </span>
+    );
+  return null;
+}
+
+function ClosedNotice({ reason, workspaceId }: { reason: ClosedReason | null; workspaceId: string }) {
+  const text =
+    reason === "deleted"
+      ? "This page was deleted."
+      : reason === "private"
+        ? "The owner made this page private, so you can't edit it anymore."
+        : "This page isn't available anymore.";
+  return (
+    <div className="mx-6 flex flex-col items-start gap-3 rounded-lg border bg-muted/40 p-5 sm:mx-[54px]">
+      <p className="text-sm">{text}</p>
+      <Button variant="outline" size="sm" asChild>
+        <Link to={`/workspace/${workspaceId}/notes`}>Back to Notes</Link>
+      </Button>
+    </div>
   );
 }

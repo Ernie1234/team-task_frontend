@@ -168,6 +168,11 @@ class SocketService {
       this.emit("note:changed", data);
     });
 
+    // Live co-editing of Notes
+    for (const event of ["note:update", "note:awareness", "note:ready", "note:reseed", "note:resync", "note:closed"]) {
+      this.socket.on(event, (data) => this.emit(event, data));
+    }
+
     this.socket.on("calendar:changed", (data) => {
       this.emit("calendar:changed", data);
     });
@@ -377,6 +382,17 @@ class SocketService {
     options: { workspace?: string; project?: string; otherUserId?: string }
   ) {
     if (this.socket?.connected) this.socket.emit("typing:start", { chatType, ...options });
+  }
+
+  /* ---- Live notes: send edits and cursors, open and convert documents ---- */
+
+  public async noteRequest<T = object>(event: "note:join" | "note:seed", payload: unknown) {
+    return this.request<T>(event, payload, 15000);
+  }
+
+  /** Fire-and-forget (edits, cursors, leaving); dropped while offline, the document resyncs on reconnect */
+  public noteSend(event: "note:update" | "note:awareness" | "note:leave", payload: unknown) {
+    if (this.socket?.connected) this.socket.emit(event, payload);
   }
 
   public stopTyping(

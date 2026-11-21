@@ -471,6 +471,8 @@ export type UpdateNotePayloadType = Partial<{
   excerpt: string;
   visibility: NoteVisibility;
   parentNote: string | null;
+  /** Sent by the live editor: content is a snapshot of the shared document */
+  live: boolean;
 }>;
 
 // CALENDAR
