@@ -93,6 +93,18 @@ export const saveAppearanceMutationFn = async (appearance: Appearance) => {
   return response.data as { appearance: Appearance };
 };
 
+/** Turns emails on or off, or moves the daily summary */
+export const updateEmailPrefsMutationFn = async (changes: Partial<import("@/types/api.type").EmailPrefs>) => {
+  const response = await API.patch(`/user/email-preferences`, changes);
+  return response.data as { emailPrefs: import("@/types/api.type").EmailPrefs; message: string };
+};
+
+/** Sends today's summary right away */
+export const sendTestDigestMutationFn = async () => {
+  const response = await API.post(`/user/email-preferences/test-digest`);
+  return response.data as { sent: boolean; message: string };
+};
+
 /** Records that the guided tour was finished or skipped */
 export const updateTourMutationFn = async (status: "completed" | "skipped") => {
   const response = await API.patch(`/user/tour`, { status });

@@ -25,6 +25,27 @@ export type registerType = {
 };
 
 // USER TYPE
+export type EmailPrefs = {
+  taskAssigned: boolean;
+  taskUpdated: boolean;
+  eventReminder: boolean;
+  memberJoined: boolean;
+  digest: boolean;
+  /** Local hour (0-23) the daily summary arrives */
+  digestHour: number;
+  timeZone: string;
+};
+
+export const DEFAULT_EMAIL_PREFS: EmailPrefs = {
+  taskAssigned: true,
+  taskUpdated: false,
+  eventReminder: true,
+  memberJoined: false,
+  digest: true,
+  digestHour: 8,
+  timeZone: "UTC",
+};
+
 export type UserType = {
   _id: string;
   name: string;
@@ -33,6 +54,8 @@ export type UserType = {
   appearance?: import("@/lib/appearance").Appearance | null;
   /** Guided tour; "pending" until a new account finishes or skips it */
   tour?: { status: "pending" | "completed" | "skipped"; updatedAt: string } | null;
+  /** Which emails to get (missing on older accounts: the defaults apply) */
+  emailPrefs?: Partial<EmailPrefs>;
   isActive: true;
   lastLogin: null;
   createdAt: Date;

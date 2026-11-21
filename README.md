@@ -59,6 +59,7 @@ Everything below is built and working. Unticked items are on the [roadmap](#road
 ### Notifications
 - [x] Bell menu with unread count, plus a full notifications page
 - [x] Real-time delivery over WebSockets, mark as read / mark all as read
+- [x] Email: choose which updates are emailed, a daily summary at your chosen hour, and a "send me a test" button
 
 ### Settings, account and personalisation
 - [x] Notion-style Settings window (Ctrl + ,)
@@ -103,7 +104,7 @@ Ticked off as each item ships.
 - [x] Guided tour for new accounts: spotlight walkthrough of the app on first sign-in, replay from the account menu
 - [x] Real-time co-editing in Notes with live cursors (Yjs)
 - [ ] Global search and command palette (Ctrl + K) across tasks, notes, messages and people
-- [ ] Email notifications and a daily digest
+- [x] Email notifications and a daily digest
 - [ ] Activity history / audit log with undo for deletes
 - [ ] Recurring tasks, task dependencies, timeline (Gantt) view and time tracking
 - [ ] Public REST API with API keys, webhooks, Slack and GitHub integrations

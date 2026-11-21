@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Group, Switch } from "@/components/settings/settings-ui";
 import { ArrowUpRight, Bell, CalendarDays, Check, ClipboardCopy, Monitor, Moon, Palette, RotateCcw, Settings, Sun, Type, Users } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuthContext } from "@/context/auth-provider";
 import useWorkspaceId from "@/hooks/use-workspace-id";
@@ -50,6 +50,18 @@ export default function SettingsDialog() {
   const { user, hasPermission } = useAuthContext();
   const workspaceId = useWorkspaceId();
   const navigate = useNavigate();
+  // Links from emails (…?settings=notifications) open the matching page
+  const [params, setParams] = useSearchParams();
+  const linked = params.get("settings");
+  useEffect(() => {
+    if (!linked) return;
+    const sections = ["account", "appearance", "text", "notifications", "calendar"] as const;
+    const target = sections.find((s) => s === linked);
+    if (target) openSettings(target);
+    params.delete("settings");
+    setParams(params, { replace: true });
+  }, [linked, params, setParams, openSettings]);
+
   const go = (path: string) => {
     setOpen(false);
     navigate(path);
