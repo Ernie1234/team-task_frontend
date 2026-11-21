@@ -66,9 +66,11 @@ Everything below is built and working. Unticked items are on the [roadmap](#road
 - [x] Font & text: 11 fonts (including two easier-to-read fonts), text size, reduce motion
 - [x] Preferences sync to your account across devices
 
-### Sign-in
-- [x] Email and password with email verification
-- [x] Sign in with Google
+### Sign-in (Better Auth)
+- [x] Stay signed in for 30 days; the session renews while you use the app
+- [x] Email and password with a 6-digit email code (resend with cooldown)
+- [x] Sign in with Google (links to an existing account with the same email)
+- [x] Forgot password: reset with an emailed code, then signed straight in
 
 ---
 
@@ -78,7 +80,7 @@ Ticked off as each item ships.
 
 ### Production-grade engineering
 - [ ] Deploy (web on Vercel, API on Fly.io / Render) with a seeded demo account and a "Try the demo" button
-- [ ] Redis-backed sessions (sign-ins survive restarts)
+- [x] Persistent sessions in MongoDB with Better Auth (sign-ins survive restarts)
 - [ ] Socket.IO Redis adapter (chat, presence and reminders across several server instances)
 - [ ] File uploads on S3 / Cloudflare R2 with signed URLs
 - [ ] CI/CD with GitHub Actions: type-check, lint, unit and end-to-end tests on every pull request, automatic deploys, status badges
@@ -97,6 +99,7 @@ Ticked off as each item ships.
 - [ ] Meeting notes from calendar events, with AI summary and action items
 
 ### Product depth
+- [ ] Guided tour for new accounts
 - [ ] Real-time co-editing in Notes with live cursors (Yjs)
 - [ ] Global search and command palette (Ctrl + K) across tasks, notes, messages and people
 - [ ] Email notifications and a daily digest
@@ -122,7 +125,7 @@ Ticked off as each item ships.
 | Real-time | Socket.IO client |
 | Editor | BlockNote (ProseMirror / Tiptap) |
 | Charts & dates | Recharts, date-fns |
-| Backend | Bun, Express 5, MongoDB (Mongoose), Passport, Socket.IO, Zod ([backend repo](https://github.com/Ernie1234/team-task_backend)) |
+| Backend | Bun, Express 5, MongoDB (Mongoose), Better Auth, Socket.IO, Zod ([backend repo](https://github.com/Ernie1234/team-task_backend)) |
 
 ## Architecture
 

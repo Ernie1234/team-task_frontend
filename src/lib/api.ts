@@ -51,25 +51,42 @@ export type DirectConversationType = {
   unreadCount: number;
 };
 
-export const loginMutationFn = async (
-  data: loginType
-): Promise<LoginResponseType> => {
-  const response = await API.post("/auth/login", data);
+/* Sign-in is handled by Better Auth on the API (/auth/*). Sessions last 30 days
+   and renew while you use the app, so people stay signed in. */
+
+export const loginMutationFn = async (data: loginType): Promise<LoginResponseType> => {
+  const response = await API.post("/auth/sign-in/email", { ...data, rememberMe: true });
   return response.data;
 };
 
 export const registerMutationFn = async (data: registerType) =>
-  await API.post("/auth/register", data);
+  await API.post("/auth/sign-up/email", data);
 
-export const verifyEmailMutationFn = async ({
-  email,
-  token,
-}: {
-  email: string;
-  token: string;
-}) => await API.post("/auth/verify-email", { email, token });
+/** Checks the 6-digit code; on success the API signs the user in */
+export const verifyEmailMutationFn = async ({ email, otp }: { email: string; otp: string }) =>
+  await API.post("/auth/email-otp/verify-email", { email, otp });
 
-export const logoutMutationFn = async () => await API.post("/auth/logout");
+export const resendVerificationCodeMutationFn = async (email: string) =>
+  await API.post("/auth/email-otp/send-verification-otp", { email, type: "email-verification" });
+
+export const requestPasswordResetMutationFn = async (email: string) =>
+  await API.post("/auth/email-otp/request-password-reset", { email });
+
+export const resetPasswordMutationFn = async (data: { email: string; otp: string; password: string }) =>
+  await API.post("/auth/email-otp/reset-password", data);
+
+/** Starts Google sign-in and returns the Google page to send the browser to */
+export const googleSignInUrlFn = async (returnUrl?: string | null): Promise<string> => {
+  const origin = window.location.origin;
+  const response = await API.post("/auth/sign-in/social", {
+    provider: "google",
+    callbackURL: `${origin}${returnUrl ? decodeURIComponent(returnUrl) : "/"}`,
+    errorCallbackURL: `${origin}/google/oauth/callback?status=failure`,
+  });
+  return response.data.url;
+};
+
+export const logoutMutationFn = async () => await API.post("/auth/sign-out", {});
 
 export const saveAppearanceMutationFn = async (appearance: Appearance) => {
   const response = await API.put(`/user/appearance`, appearance);

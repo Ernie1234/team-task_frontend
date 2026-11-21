@@ -5,20 +5,16 @@ import {
 } from "@/constant";
 
 export type loginType = { email: string; password: string };
+/** Better Auth's sign-in response */
 export type LoginResponseType = {
-  status: boolean;
-  message: string;
-  data: {
-    _id: string;
+  redirect: boolean;
+  token: string;
+  user: {
+    id: string;
     name: string;
     email: string;
-    profilePicture: string | null;
-    isActive: boolean;
-    lastLogin: string | null;
-    createdAt: string;
-    updatedAt: string;
-    __v: number;
-    currentWorkspace: string;
+    image?: string | null;
+    emailVerified: boolean;
   };
 };
 

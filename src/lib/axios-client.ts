@@ -25,7 +25,9 @@ API.interceptors.response.use(
 
     const customError: CustomError = {
       ...error,
-      errorCode: data?.errorCode || "UNKNOWN_ERROR",
+      // Our API sends errorCode; Better Auth (/auth/*) sends code
+      errorCode: data?.errorCode || data?.code || "UNKNOWN_ERROR",
+      message: data?.message || error.message,
     };
 
     return Promise.reject(customError);

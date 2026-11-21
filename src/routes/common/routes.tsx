@@ -1,4 +1,5 @@
 import GoogleOAuthFailure from "@/page/auth/GoogleOAuthFailure";
+import ForgotPassword from "@/page/auth/ForgotPassword";
 import SignIn from "@/page/auth/Sign-in";
 import SignUp from "@/page/auth/Sign-up";
 import WorkspaceDashboard from "@/page/workspace/Dashboard";
@@ -28,6 +29,7 @@ export const authenticationRoutePaths = [
   { path: AUTH_ROUTES.SIGN_UP, element: <SignUp /> },
   { path: AUTH_ROUTES.GOOGLE_OAUTH_CALLBACK, element: <GoogleOAuthFailure /> },
   { path: AUTH_ROUTES.VERIFY_EMAIL, element: <VerifyEmail /> },
+  { path: AUTH_ROUTES.FORGOT_PASSWORD, element: <ForgotPassword /> },
 ];
 
 export const protectedRoutePaths = [

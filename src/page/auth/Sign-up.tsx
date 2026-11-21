@@ -18,6 +18,7 @@ import { registerMutationFn } from "../../lib/api";
 import { toast } from "../../hooks/use-toast";
 import { Loader } from "lucide-react";
 import GoogleOauthButton from "@/components/auth/google-oauth-button";
+import AuthShowcase from "@/components/auth/auth-showcase";
 import Logo from "@/components/logo";
 
 // Form schema and component logic are unchanged
@@ -28,8 +29,8 @@ const formSchema = z.object({
   email: z.string().trim().email("Invalid email address").min(1, {
     message: "Email is required",
   }),
-  password: z.string().trim().min(1, {
-    message: "Password is required",
+  password: z.string().trim().min(8, {
+    message: "Use at least 8 characters",
   }),
 });
 
@@ -67,7 +68,6 @@ const SignUp = () => {
         );
       },
       onError: (error) => {
-        console.log(error);
         toast({
           title: "Error",
           description: error.message,
@@ -83,7 +83,7 @@ const SignUp = () => {
         <div className="flex justify-center gap-2 md:justify-start">
           <Link to="/" className="flex items-center gap-2 font-medium">
             <Logo />
-            <h1 className="font-medium text-lg">Team Sync.</h1>
+            <h1 className="font-medium text-lg">Team Task.</h1>
           </Link>
         </div>
         <div className="flex flex-1 items-center justify-center">
@@ -96,7 +96,7 @@ const SignUp = () => {
                 </p>
               </div>
               <GoogleOauthButton
-                label="Signup with Google"
+                label="Sign up with Google"
                 returnUrl={returnUrl}
               />
               <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
@@ -179,13 +179,7 @@ const SignUp = () => {
           </div>
         </div>
       </div>
-      <div className="bg-muted relative hidden lg:block">
-        <img
-          src="/placeholder.svg"
-          alt="Image"
-          className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-        />
-      </div>
+      <AuthShowcase />
     </div>
   );
 };

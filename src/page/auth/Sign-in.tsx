@@ -17,8 +17,10 @@ import {
 import { Input } from "@/components/ui/input";
 import Logo from "@/components/logo";
 import GoogleOauthButton from "@/components/auth/google-oauth-button";
-import { useMutation } from "@tanstack/react-query";
+import AuthShowcase from "@/components/auth/auth-showcase";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { loginMutationFn } from "@/lib/api";
+import type { CustomError } from "@/types/custom-error.type";
 import { toast } from "@/hooks/use-toast";
 import { Loader } from "lucide-react";
 
@@ -34,6 +36,7 @@ const formSchema = z.object({
 
 const SignIn = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const returnUrl = searchParams.get("returnUrl");
 
@@ -53,12 +56,20 @@ const SignIn = () => {
     if (isPending) return;
 
     mutate(values, {
-      onSuccess: (data) => {
-        const user = data.data;
-        const decodedUrl = returnUrl ? decodeURIComponent(returnUrl) : null;
-        navigate(decodedUrl || `/workspace/${user.currentWorkspace}`);
+      onSuccess: async () => {
+        // Load the signed-in user; the sign-in page then forwards to their workspace
+        await queryClient.refetchQueries({ queryKey: ["authUser"] });
+        if (returnUrl) navigate(decodeURIComponent(returnUrl));
       },
-      onError: (error) => {
+      onError: (error: CustomError) => {
+        if (error.errorCode === "EMAIL_NOT_VERIFIED") {
+          // A fresh code was just emailed
+          toast({ title: "Verify your email", description: "We sent a 6-digit code to your inbox." });
+          navigate(
+            `/verify-email?email=${encodeURIComponent(values.email)}${returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ""}`
+          );
+          return;
+        }
         toast({
           title: "Error",
           description: error.message,
@@ -83,11 +94,11 @@ const SignIn = () => {
               <div className="flex flex-col items-center gap-2 text-center">
                 <h1 className="text-2xl font-bold">Welcome back</h1>
                 <p className="text-muted-foreground text-sm text-balance">
-                  Login with Google
+                  Sign in to your workspace
                 </p>
               </div>
               <GoogleOauthButton
-                label="Login with Google"
+                label="Continue with Google"
                 returnUrl={returnUrl}
               />
               <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
@@ -128,12 +139,12 @@ const SignIn = () => {
                         <FormItem>
                           <div className="flex items-center">
                             <FormLabel htmlFor="password">Password</FormLabel>
-                            <a
-                              href="#"
+                            <Link
+                              to={`/forgot-password${form.watch("email") ? `?email=${encodeURIComponent(form.watch("email"))}` : ""}`}
                               className="ml-auto text-sm underline-offset-4 hover:underline"
                             >
                               Forgot your password?
-                            </a>
+                            </Link>
                           </div>
                           <FormControl>
                             <Input id="password" type="password" {...field} />
@@ -162,13 +173,7 @@ const SignIn = () => {
           </div>
         </div>
       </div>
-      <div className="bg-muted relative hidden lg:block">
-        <img
-          src="/placeholder.svg"
-          alt="Image"
-          className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-        />
-      </div>
+      <AuthShowcase />
     </div>
   );
 };
