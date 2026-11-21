@@ -99,7 +99,7 @@ Ticked off as each item ships.
 - [ ] Meeting notes from calendar events, with AI summary and action items
 
 ### Product depth
-- [ ] Guided tour for new accounts
+- [x] Guided tour for new accounts: spotlight walkthrough of the app on first sign-in, replay from the account menu
 - [ ] Real-time co-editing in Notes with live cursors (Yjs)
 - [ ] Global search and command palette (Ctrl + K) across tasks, notes, messages and people
 - [ ] Email notifications and a daily digest

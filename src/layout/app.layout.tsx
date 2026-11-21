@@ -7,6 +7,7 @@ import CreateWorkspaceDialog from "@/components/workspace/create-workspace-dialo
 import CreateProjectDialog from "@/components/workspace/project/create-project-dialog";
 import EventDialog from "@/components/calendar/event-dialog";
 import SettingsDialog from "@/components/settings/settings-dialog";
+import ProductTour from "@/components/tour/product-tour";
 
 const AppLayout = () => {
   const pathname = useLocation().pathname;
@@ -28,6 +29,7 @@ const AppLayout = () => {
             <CreateProjectDialog />
             <EventDialog />
             <SettingsDialog />
+            <ProductTour />
           </div>
         </SidebarInset>
       </SidebarProvider>

@@ -94,7 +94,7 @@ export function NavMain() {
     <SidebarGroup>
       <SidebarMenu>
         {items.map((item) => (
-          <SidebarMenuItem key={item.title}>
+          <SidebarMenuItem key={item.title} data-tour={`nav-${item.title.toLowerCase()}`}>
             <SidebarMenuButton
               isActive={item.title === "Notes" ? pathname.startsWith(item.url) : item.url === pathname}
               asChild

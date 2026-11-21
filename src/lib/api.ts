@@ -93,6 +93,12 @@ export const saveAppearanceMutationFn = async (appearance: Appearance) => {
   return response.data as { appearance: Appearance };
 };
 
+/** Records that the guided tour was finished or skipped */
+export const updateTourMutationFn = async (status: "completed" | "skipped") => {
+  const response = await API.patch(`/user/tour`, { status });
+  return response.data as { tour: NonNullable<import("@/types/api.type").UserType["tour"]> };
+};
+
 export const getCurrentUserQueryFn =
   async (): Promise<CurrentUserResponseType> => {
     const response = await API.get(`/user/current`);

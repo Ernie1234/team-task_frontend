@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, Check, ChevronsUpDown, LogOut, Plus, Settings, UserRound, UserPlus } from "lucide-react";
+import { CalendarDays, Check, ChevronsUpDown, Compass, LogOut, Plus, Settings, UserRound, UserPlus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,7 @@ import { getAllWorkspacesUserIsMemberQueryFn } from "@/lib/api";
 import { getAvatarFallbackText } from "@/lib/helper";
 import { Permissions } from "@/constant";
 import { ThemeSwitcher } from "@/components/shared/theme-switcher";
+import { useTourStore } from "@/hooks/use-tour";
 
 const WorkspaceMark = ({ name, size = "sm" }: { name?: string; size?: "sm" | "lg" }) => (
   <span
@@ -41,6 +42,7 @@ export function AccountMenu({ onLogout }: { onLogout: () => void }) {
   const { user, workspace, hasPermission } = useAuthContext();
   const { onOpen: newWorkspace } = useCreateWorkspaceDialog();
   const openSettings = useAppearanceStore((s) => s.openSettings);
+  const startTour = useTourStore((s) => s.start);
   const { data } = useQuery({ queryKey: ["userWorkspaces"], queryFn: getAllWorkspacesUserIsMemberQueryFn, staleTime: 60_000 });
   const workspaces = data?.workspaces ?? [];
   const memberCount = workspace?.members?.length ?? 0;
@@ -49,7 +51,7 @@ export function AccountMenu({ onLogout }: { onLogout: () => void }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+        <SidebarMenuButton size="lg" data-tour="account" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
           <Avatar className="h-8 w-8 rounded-full">
             <AvatarImage src={user?.profilePicture || ""} alt="" className="object-cover" />
             <AvatarFallback className="rounded-full bg-sidebar-primary text-xs font-semibold text-sidebar-primary-foreground">
@@ -89,6 +91,9 @@ export function AccountMenu({ onLogout }: { onLogout: () => void }) {
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => openSettings("calendar")}>
             <CalendarDays className="mr-2 h-4 w-4" /> Calendar
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setTimeout(startTour, 150)}>
+            <Compass className="mr-2 h-4 w-4" /> Take the tour
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />

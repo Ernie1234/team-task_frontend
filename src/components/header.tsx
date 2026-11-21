@@ -64,7 +64,9 @@ const Header = () => {
         </Breadcrumb>
       </div>
       <div className="flex items-center gap-2 px-3">
-        <NotificationBell />
+        <div data-tour="notifications">
+          <NotificationBell />
+        </div>
       </div>
     </header>
   );

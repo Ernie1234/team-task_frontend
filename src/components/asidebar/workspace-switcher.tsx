@@ -65,7 +65,7 @@ export function WorkspaceSwitcher() {
   };
 
   return (
-    <>
+    <div data-tour="workspace">
       <SidebarGroupLabel className="w-full justify-between pr-0">
         <span>Workspaces</span>
         <button
@@ -150,6 +150,6 @@ export function WorkspaceSwitcher() {
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
-    </>
+    </div>
   );
 }

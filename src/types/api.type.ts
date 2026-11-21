@@ -31,6 +31,8 @@ export type UserType = {
   email: string;
   profilePicture: string | undefined;
   appearance?: import("@/lib/appearance").Appearance | null;
+  /** Guided tour; "pending" until a new account finishes or skips it */
+  tour?: { status: "pending" | "completed" | "skipped"; updatedAt: string } | null;
   isActive: true;
   lastLogin: null;
   createdAt: Date;
